@@ -130,16 +130,20 @@
     <div class="container">
       <div class="form-card">
         <form onsubmit="handleSubmit(event)">
+          <input type="hidden" name="access_key" value="5dda7529-75af-436a-b4d2-ff161cfa217c" />
+          <input type="hidden" name="subject" value="New Renovation Impact Analysis — The Thomas Group" />
+          <input type="hidden" name="from_name" value="TTG Real Estate Website" />
+          <input type="hidden" name="redirect" value="false" />
 
           <span class="form-section-label">Property Details</span>
           <div class="form-group full">
             <label>Property Address</label>
-            <input type="text" placeholder="123 Main St, Denver, CO 80202" />
+            <input type="text" name="property_address" placeholder="123 Main St, Denver, CO 80202" />
           </div>
           <div class="form-row">
             <div class="form-group">
               <label>Property Type</label>
-              <select>
+              <select name="property_type">
                 <option value="">Select one...</option>
                 <option>Multifamily (2–4 units)</option>
                 <option>Multifamily (5–20 units)</option>
@@ -150,17 +154,17 @@
             </div>
             <div class="form-group">
               <label>Year Built</label>
-              <input type="number" placeholder="1978" />
+              <input type="number" name="year_built" placeholder="1978" />
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
               <label>Number of Units</label>
-              <input type="number" placeholder="12" />
+              <input type="number" name="num_units" placeholder="12" />
             </div>
             <div class="form-group">
               <label>Current Occupancy (%)</label>
-              <input type="number" placeholder="88" min="0" max="100" />
+              <input type="number" name="occupancy_pct" placeholder="88" min="0" max="100" />
             </div>
           </div>
           <div class="form-spacer"></div>
@@ -169,22 +173,22 @@
           <div class="form-row">
             <div class="form-group">
               <label>Current Average Monthly Rent ($/unit)</label>
-              <input type="number" placeholder="1,450" />
+              <input type="number" name="current_avg_rent" placeholder="1,450" />
             </div>
             <div class="form-group">
               <label>Target Average Monthly Rent ($/unit)</label>
-              <input type="number" placeholder="1,750" />
+              <input type="number" name="target_avg_rent" placeholder="1,750" />
               <span class="form-hint">Post-renovation target, if known</span>
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
               <label>Estimated Renovation Budget ($)</label>
-              <input type="number" placeholder="250,000" />
+              <input type="number" name="renovation_budget" placeholder="250,000" />
             </div>
             <div class="form-group">
               <label>Budget Confidence</label>
-              <select>
+              <select name="budget_confidence">
                 <option value="">Select one...</option>
                 <option>Firm (contractor bids in hand)</option>
                 <option>Estimated (rough scoping done)</option>
@@ -198,23 +202,23 @@
           <div class="checkbox-group">
             <label class="group-label">Areas of Improvement (select all that apply)</label>
             <div class="checkbox-grid">
-              <label class="checkbox-item"><input type="checkbox" /> Kitchen Interiors</label>
-              <label class="checkbox-item"><input type="checkbox" /> Bathroom Interiors</label>
-              <label class="checkbox-item"><input type="checkbox" /> Flooring</label>
-              <label class="checkbox-item"><input type="checkbox" /> Appliances</label>
-              <label class="checkbox-item"><input type="checkbox" /> Exterior / Curb Appeal</label>
-              <label class="checkbox-item"><input type="checkbox" /> Common Areas</label>
-              <label class="checkbox-item"><input type="checkbox" /> HVAC / Mechanicals</label>
-              <label class="checkbox-item"><input type="checkbox" /> Roof / Windows</label>
-              <label class="checkbox-item"><input type="checkbox" /> Landscaping</label>
-              <label class="checkbox-item"><input type="checkbox" /> Laundry / Amenities</label>
-              <label class="checkbox-item"><input type="checkbox" /> Parking / Garages</label>
-              <label class="checkbox-item"><input type="checkbox" /> Other</label>
+              <label class="checkbox-item"><input type="checkbox" name="scope_kitchens" value="Kitchen Interiors" /> Kitchen Interiors</label>
+              <label class="checkbox-item"><input type="checkbox" name="scope_bathrooms" value="Bathroom Interiors" /> Bathroom Interiors</label>
+              <label class="checkbox-item"><input type="checkbox" name="scope_flooring" value="Flooring" /> Flooring</label>
+              <label class="checkbox-item"><input type="checkbox" name="scope_appliances" value="Appliances" /> Appliances</label>
+              <label class="checkbox-item"><input type="checkbox" name="scope_exterior" value="Exterior / Curb Appeal" /> Exterior / Curb Appeal</label>
+              <label class="checkbox-item"><input type="checkbox" name="scope_common" value="Common Areas" /> Common Areas</label>
+              <label class="checkbox-item"><input type="checkbox" name="scope_hvac" value="HVAC / Mechanicals" /> HVAC / Mechanicals</label>
+              <label class="checkbox-item"><input type="checkbox" name="scope_roof" value="Roof / Windows" /> Roof / Windows</label>
+              <label class="checkbox-item"><input type="checkbox" name="scope_landscaping" value="Landscaping" /> Landscaping</label>
+              <label class="checkbox-item"><input type="checkbox" name="scope_laundry" value="Laundry / Amenities" /> Laundry / Amenities</label>
+              <label class="checkbox-item"><input type="checkbox" name="scope_parking" value="Parking / Garages" /> Parking / Garages</label>
+              <label class="checkbox-item"><input type="checkbox" name="scope_other" value="Other" /> Other</label>
             </div>
           </div>
           <div class="form-group full">
             <label>Scope Notes</label>
-            <textarea placeholder="Describe any specific renovation plans, conditions, or constraints we should know about..."></textarea>
+            <textarea name="scope_notes" placeholder="Describe any specific renovation plans, conditions, or constraints we should know about..."></textarea>
           </div>
           <div class="form-spacer"></div>
 
@@ -222,21 +226,21 @@
           <div class="form-row">
             <div class="form-group">
               <label>First Name</label>
-              <input type="text" placeholder="Jane" />
+              <input type="text" name="first_name" placeholder="Jane" />
             </div>
             <div class="form-group">
               <label>Last Name</label>
-              <input type="text" placeholder="Doe" />
+              <input type="text" name="last_name" placeholder="Doe" />
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
               <label>Email Address</label>
-              <input type="email" placeholder="jane@example.com" />
+              <input type="email" name="email" placeholder="jane@example.com" />
             </div>
             <div class="form-group">
               <label>Phone Number</label>
-              <input type="tel" placeholder="(720) 000-0000" />
+              <input type="tel" name="phone" placeholder="(720) 000-0000" />
             </div>
           </div>
 
@@ -262,13 +266,31 @@
   </footer>
 
   <script>
-    function handleSubmit(e) {
+    async function handleSubmit(e) {
       e.preventDefault();
-      const btn = e.target.querySelector('.form-submit');
-      btn.textContent = 'Submitted — We\'ll be in touch shortly';
-      btn.style.background = '#2d6a4f';
-      btn.style.color = '#fff';
+      const form = e.target;
+      const btn = form.querySelector('.form-submit');
+      btn.textContent = 'Sending...';
       btn.disabled = true;
+      try {
+        const res = await fetch('https://api.web3forms.com/submit', {
+          method: 'POST',
+          body: new FormData(form)
+        });
+        const data = await res.json();
+        if (data.success) {
+          btn.textContent = 'Submitted — We\'ll be in touch shortly';
+          btn.style.background = '#2d6a4f';
+          btn.style.color = '#fff';
+        } else {
+          throw new Error(data.message);
+        }
+      } catch {
+        btn.textContent = 'Error sending — please call (720) 586-4705';
+        btn.style.background = '#9b2335';
+        btn.style.color = '#fff';
+        btn.disabled = false;
+      }
     }
   </script>
 </body>

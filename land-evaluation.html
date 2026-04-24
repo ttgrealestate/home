@@ -132,46 +132,50 @@
     <div class="container">
       <div class="form-card">
         <form onsubmit="handleSubmit(event)">
+          <input type="hidden" name="access_key" value="5dda7529-75af-436a-b4d2-ff161cfa217c" />
+          <input type="hidden" name="subject" value="New Land Evaluation — The Thomas Group" />
+          <input type="hidden" name="from_name" value="TTG Real Estate Website" />
+          <input type="hidden" name="redirect" value="false" />
 
           <span class="form-section-label">Parcel Details</span>
           <div class="form-group full">
             <label>Property Address or General Location</label>
-            <input type="text" placeholder="144th Ave & Manila Rd, Adams County, CO" />
+            <input type="text" name="property_location" placeholder="144th Ave & Manila Rd, Adams County, CO" />
           </div>
           <div class="form-row">
             <div class="form-group">
               <label>County</label>
-              <input type="text" placeholder="Adams" />
+              <input type="text" name="county" placeholder="Adams" />
             </div>
             <div class="form-group">
               <label>State</label>
-              <input type="text" placeholder="Colorado" value="Colorado" />
+              <input type="text" name="state" placeholder="Colorado" value="Colorado" />
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
               <label>Total Acreage</label>
-              <input type="number" placeholder="160" step="0.01" />
+              <input type="number" name="total_acreage" placeholder="160" step="0.01" />
             </div>
             <div class="form-group">
               <label>Number of Parcels</label>
-              <input type="number" placeholder="1" />
+              <input type="number" name="num_parcels" placeholder="1" />
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
               <label>Zoning Classification</label>
-              <input type="text" placeholder="A-3, R-1, MU-C..." />
+              <input type="text" name="zoning" placeholder="A-3, R-1, MU-C..." />
             </div>
             <div class="form-group">
               <label>Parcel Number(s)</label>
-              <input type="text" placeholder="R0201494" />
+              <input type="text" name="parcel_numbers" placeholder="R0201494" />
               <span class="form-hint">Separate multiple with commas</span>
             </div>
           </div>
           <div class="form-group">
             <label>Current Use of Land</label>
-            <select>
+            <select name="current_use">
               <option value="">Select one...</option>
               <option>Vacant / Unimproved</option>
               <option>Agricultural / Farming</option>
@@ -187,18 +191,18 @@
           <div class="checkbox-group">
             <label class="group-label">Available Utilities (select all that apply)</label>
             <div class="checkbox-grid">
-              <label class="checkbox-item"><input type="checkbox" /> Water</label>
-              <label class="checkbox-item"><input type="checkbox" /> Sewer</label>
-              <label class="checkbox-item"><input type="checkbox" /> Electric</label>
-              <label class="checkbox-item"><input type="checkbox" /> Natural Gas</label>
-              <label class="checkbox-item"><input type="checkbox" /> Well / Septic</label>
-              <label class="checkbox-item"><input type="checkbox" /> None / Unknown</label>
+              <label class="checkbox-item"><input type="checkbox" name="utility_water" value="Water" /> Water</label>
+              <label class="checkbox-item"><input type="checkbox" name="utility_sewer" value="Sewer" /> Sewer</label>
+              <label class="checkbox-item"><input type="checkbox" name="utility_electric" value="Electric" /> Electric</label>
+              <label class="checkbox-item"><input type="checkbox" name="utility_gas" value="Natural Gas" /> Natural Gas</label>
+              <label class="checkbox-item"><input type="checkbox" name="utility_well" value="Well / Septic" /> Well / Septic</label>
+              <label class="checkbox-item"><input type="checkbox" name="utility_none" value="None / Unknown" /> None / Unknown</label>
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
               <label>Road Access</label>
-              <select>
+              <select name="road_access">
                 <option value="">Select one...</option>
                 <option>Paved road frontage</option>
                 <option>Gravel / dirt road access</option>
@@ -208,7 +212,7 @@
             </div>
             <div class="form-group">
               <label>Irrigation / Water Rights</label>
-              <select>
+              <select name="water_rights">
                 <option value="">Select one...</option>
                 <option>Yes — included in sale</option>
                 <option>Yes — not included</option>
@@ -223,12 +227,12 @@
           <div class="form-row">
             <div class="form-group">
               <label>Asking Price or Target Value ($)</label>
-              <input type="number" placeholder="2,000,000" />
+              <input type="number" name="asking_price" placeholder="2,000,000" />
               <span class="form-hint">Leave blank if unknown</span>
             </div>
             <div class="form-group">
               <label>Desired Sales Timeline</label>
-              <select>
+              <select name="sales_timeline">
                 <option value="">Select one...</option>
                 <option>ASAP (0–3 months)</option>
                 <option>3–6 months</option>
@@ -240,7 +244,7 @@
           </div>
           <div class="form-group full">
             <label>Additional Notes</label>
-            <textarea placeholder="Any known easements, deed restrictions, environmental issues, development potential, or other relevant details..."></textarea>
+            <textarea name="additional_notes" placeholder="Any known easements, deed restrictions, environmental issues, development potential, or other relevant details..."></textarea>
           </div>
           <div class="form-spacer"></div>
 
@@ -248,21 +252,21 @@
           <div class="form-row">
             <div class="form-group">
               <label>First Name</label>
-              <input type="text" placeholder="Jane" />
+              <input type="text" name="first_name" placeholder="Jane" />
             </div>
             <div class="form-group">
               <label>Last Name</label>
-              <input type="text" placeholder="Doe" />
+              <input type="text" name="last_name" placeholder="Doe" />
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
               <label>Email Address</label>
-              <input type="email" placeholder="jane@example.com" />
+              <input type="email" name="email" placeholder="jane@example.com" />
             </div>
             <div class="form-group">
               <label>Phone Number</label>
-              <input type="tel" placeholder="(720) 000-0000" />
+              <input type="tel" name="phone" placeholder="(720) 000-0000" />
             </div>
           </div>
 
@@ -288,13 +292,31 @@
   </footer>
 
   <script>
-    function handleSubmit(e) {
+    async function handleSubmit(e) {
       e.preventDefault();
-      const btn = e.target.querySelector('.form-submit');
-      btn.textContent = 'Submitted — We\'ll be in touch shortly';
-      btn.style.background = '#2d6a4f';
-      btn.style.color = '#fff';
+      const form = e.target;
+      const btn = form.querySelector('.form-submit');
+      btn.textContent = 'Sending...';
       btn.disabled = true;
+      try {
+        const res = await fetch('https://api.web3forms.com/submit', {
+          method: 'POST',
+          body: new FormData(form)
+        });
+        const data = await res.json();
+        if (data.success) {
+          btn.textContent = 'Submitted — We\'ll be in touch shortly';
+          btn.style.background = '#2d6a4f';
+          btn.style.color = '#fff';
+        } else {
+          throw new Error(data.message);
+        }
+      } catch {
+        btn.textContent = 'Error sending — please call (720) 586-4705';
+        btn.style.background = '#9b2335';
+        btn.style.color = '#fff';
+        btn.disabled = false;
+      }
     }
   </script>
 </body>

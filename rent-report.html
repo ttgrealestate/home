@@ -137,26 +137,30 @@
     <div class="container">
       <div class="form-card">
         <form onsubmit="handleSubmit(event)">
+          <input type="hidden" name="access_key" value="5dda7529-75af-436a-b4d2-ff161cfa217c" />
+          <input type="hidden" name="subject" value="New Rent Report Request — The Thomas Group" />
+          <input type="hidden" name="from_name" value="TTG Real Estate Website" />
+          <input type="hidden" name="redirect" value="false" />
 
           <span class="form-section-label">Property &amp; Submarket</span>
           <div class="form-group full">
             <label>Property Address or Submarket Description</label>
-            <input type="text" placeholder="123 Main St, Denver, CO — or — South Denver / University Hills submarket" />
+            <input type="text" name="property_location" placeholder="123 Main St, Denver, CO — or — South Denver / University Hills submarket" />
           </div>
           <div class="form-row">
             <div class="form-group">
               <label>City / Neighborhood</label>
-              <input type="text" placeholder="Denver — Wash Park" />
+              <input type="text" name="city_neighborhood" placeholder="Denver — Wash Park" />
             </div>
             <div class="form-group">
               <label>Zip Code</label>
-              <input type="text" placeholder="80209" />
+              <input type="text" name="zip_code" placeholder="80209" />
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
               <label>Property Type</label>
-              <select>
+              <select name="property_type">
                 <option value="">Select one...</option>
                 <option>Multifamily (2–4 units)</option>
                 <option>Multifamily (5–20 units)</option>
@@ -167,17 +171,17 @@
             </div>
             <div class="form-group">
               <label>Year Built</label>
-              <input type="number" placeholder="1992" />
+              <input type="number" name="year_built" placeholder="1992" />
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
               <label>Total Number of Units</label>
-              <input type="number" placeholder="18" />
+              <input type="number" name="num_units" placeholder="18" />
             </div>
             <div class="form-group">
               <label>Current Occupancy (%)</label>
-              <input type="number" placeholder="94" min="0" max="100" />
+              <input type="number" name="occupancy_pct" placeholder="94" min="0" max="100" />
             </div>
           </div>
           <div class="form-spacer"></div>
@@ -194,11 +198,11 @@
               </tr>
             </thead>
             <tbody>
-              <tr><td>Studio</td><td><input type="number" placeholder="0" /></td><td><input type="number" placeholder="450" /></td><td><input type="number" placeholder="1,100" /></td></tr>
-              <tr><td>1 Bed / 1 Bath</td><td><input type="number" placeholder="6" /></td><td><input type="number" placeholder="650" /></td><td><input type="number" placeholder="1,450" /></td></tr>
-              <tr><td>2 Bed / 1 Bath</td><td><input type="number" placeholder="8" /></td><td><input type="number" placeholder="850" /></td><td><input type="number" placeholder="1,750" /></td></tr>
-              <tr><td>2 Bed / 2 Bath</td><td><input type="number" placeholder="4" /></td><td><input type="number" placeholder="950" /></td><td><input type="number" placeholder="1,900" /></td></tr>
-              <tr><td>3 Bed / 2 Bath</td><td><input type="number" placeholder="0" /></td><td><input type="number" placeholder="1,200" /></td><td><input type="number" placeholder="2,200" /></td></tr>
+              <tr><td>Studio</td><td><input type="number" name="studio_count" placeholder="0" /></td><td><input type="number" name="studio_sqft" placeholder="450" /></td><td><input type="number" name="studio_rent" placeholder="1,100" /></td></tr>
+              <tr><td>1 Bed / 1 Bath</td><td><input type="number" name="1b1b_count" placeholder="6" /></td><td><input type="number" name="1b1b_sqft" placeholder="650" /></td><td><input type="number" name="1b1b_rent" placeholder="1,450" /></td></tr>
+              <tr><td>2 Bed / 1 Bath</td><td><input type="number" name="2b1b_count" placeholder="8" /></td><td><input type="number" name="2b1b_sqft" placeholder="850" /></td><td><input type="number" name="2b1b_rent" placeholder="1,750" /></td></tr>
+              <tr><td>2 Bed / 2 Bath</td><td><input type="number" name="2b2b_count" placeholder="4" /></td><td><input type="number" name="2b2b_sqft" placeholder="950" /></td><td><input type="number" name="2b2b_rent" placeholder="1,900" /></td></tr>
+              <tr><td>3 Bed / 2 Bath</td><td><input type="number" name="3b2b_count" placeholder="0" /></td><td><input type="number" name="3b2b_sqft" placeholder="1,200" /></td><td><input type="number" name="3b2b_rent" placeholder="2,200" /></td></tr>
             </tbody>
           </table>
           <div class="form-spacer"></div>
@@ -206,7 +210,7 @@
           <span class="form-section-label">Report Focus</span>
           <div class="form-group">
             <label>Primary Question</label>
-            <select>
+            <select name="primary_question">
               <option value="">Select one...</option>
               <option>Are my rents at, above, or below market?</option>
               <option>What is achievable rent post-renovation?</option>
@@ -217,7 +221,7 @@
           </div>
           <div class="form-group full">
             <label>Additional Context</label>
-            <textarea placeholder="Any recent leases signed, concessions offered, units coming available, or specific competitors you'd like us to include..."></textarea>
+            <textarea name="additional_context" placeholder="Any recent leases signed, concessions offered, units coming available, or specific competitors you'd like us to include..."></textarea>
           </div>
           <div class="form-spacer"></div>
 
@@ -225,21 +229,21 @@
           <div class="form-row">
             <div class="form-group">
               <label>First Name</label>
-              <input type="text" placeholder="Jane" />
+              <input type="text" name="first_name" placeholder="Jane" />
             </div>
             <div class="form-group">
               <label>Last Name</label>
-              <input type="text" placeholder="Doe" />
+              <input type="text" name="last_name" placeholder="Doe" />
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
               <label>Email Address</label>
-              <input type="email" placeholder="jane@example.com" />
+              <input type="email" name="email" placeholder="jane@example.com" />
             </div>
             <div class="form-group">
               <label>Phone Number</label>
-              <input type="tel" placeholder="(720) 000-0000" />
+              <input type="tel" name="phone" placeholder="(720) 000-0000" />
             </div>
           </div>
 
@@ -265,13 +269,31 @@
   </footer>
 
   <script>
-    function handleSubmit(e) {
+    async function handleSubmit(e) {
       e.preventDefault();
-      const btn = e.target.querySelector('.form-submit');
-      btn.textContent = 'Submitted — We\'ll be in touch shortly';
-      btn.style.background = '#2d6a4f';
-      btn.style.color = '#fff';
+      const form = e.target;
+      const btn = form.querySelector('.form-submit');
+      btn.textContent = 'Sending...';
       btn.disabled = true;
+      try {
+        const res = await fetch('https://api.web3forms.com/submit', {
+          method: 'POST',
+          body: new FormData(form)
+        });
+        const data = await res.json();
+        if (data.success) {
+          btn.textContent = 'Submitted — We\'ll be in touch shortly';
+          btn.style.background = '#2d6a4f';
+          btn.style.color = '#fff';
+        } else {
+          throw new Error(data.message);
+        }
+      } catch {
+        btn.textContent = 'Error sending — please call (720) 586-4705';
+        btn.style.background = '#9b2335';
+        btn.style.color = '#fff';
+        btn.disabled = false;
+      }
     }
   </script>
 </body>
