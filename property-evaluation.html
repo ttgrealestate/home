@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Property Evaluation — The Thomas Group</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #0d1b2a; --navy2: #162333; --gold: #b89d6a; --gold2: #d4b87a;
+      --ivory: #f5f2ed; --white: #ffffff; --mid: #8a8f98;
+      --serif: 'Cormorant Garamond', Georgia, serif;
+      --sans: 'Inter', system-ui, sans-serif;
+      --easing: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: var(--sans); font-size: 15px; line-height: 1.7; color: var(--navy); background: var(--white); }
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 40px; }
+    @media (max-width: 768px) { .container { padding: 0 24px; } }
+
+    /* NAV */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      padding: 0 40px; height: 72px;
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(13,27,42,0.97);
+      border-bottom: 1px solid rgba(184,157,106,0.2);
+    }
+    .nav-brand { display: flex; flex-direction: column; text-decoration: none; line-height: 1.2; }
+    .nav-brand .name { font-family: var(--serif); font-size: 18px; font-weight: 500; letter-spacing: 0.04em; color: var(--white); }
+    .nav-brand .sub { font-size: 9px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold); }
+    .nav-links { display: flex; gap: 36px; list-style: none; }
+    .nav-links a { font-size: 11px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.7); text-decoration: none; transition: color 0.2s; }
+    .nav-links a:hover { color: var(--gold2); }
+    .nav-cta { color: var(--navy) !important; background: var(--gold); padding: 9px 20px; border-radius: 2px; }
+    .nav-cta:hover { background: var(--gold2) !important; }
+    @media (max-width: 768px) { nav { padding: 0 24px; } .nav-links { display: none; } }
+
+    /* PAGE HEADER */
+    .page-header {
+      padding-top: 72px;
+      background: var(--navy);
+      position: relative;
+      overflow: hidden;
+    }
+    .page-header-bg {
+      position: absolute; inset: 0;
+      background: linear-gradient(120deg, rgba(13,27,42,0.98) 0%, rgba(22,35,51,0.92) 100%),
+        url('https://images.unsplash.com/photo-1602800458591-eddda28a498b?w=1200&q=60') center/cover no-repeat;
+    }
+    .page-header-grid {
+      position: absolute; inset: 0;
+      background-image: linear-gradient(rgba(184,157,106,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(184,157,106,0.04) 1px, transparent 1px);
+      background-size: 80px 80px;
+    }
+    .page-header-inner {
+      position: relative; z-index: 2;
+      padding: 64px 0 56px;
+    }
+    .breadcrumb {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 10px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase;
+      color: rgba(255,255,255,0.4); margin-bottom: 20px;
+    }
+    .breadcrumb a { color: rgba(255,255,255,0.4); text-decoration: none; transition: color 0.2s; }
+    .breadcrumb a:hover { color: var(--gold); }
+    .breadcrumb span { color: var(--gold); }
+    .page-eyebrow { font-size: 10px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
+    .page-title { font-family: var(--serif); font-size: clamp(32px, 4vw, 56px); font-weight: 300; color: var(--white); line-height: 1.1; margin-bottom: 16px; }
+    .page-title em { font-style: italic; color: var(--gold2); }
+    .page-desc { font-size: 15px; font-weight: 300; color: rgba(255,255,255,0.55); max-width: 560px; line-height: 1.8; }
+
+    /* FORM SECTION */
+    .form-section { padding: 80px 0 100px; background: var(--ivory); }
+    .form-card {
+      background: var(--white);
+      border: 1px solid rgba(0,0,0,0.07);
+      border-radius: 2px;
+      padding: 56px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    @media (max-width: 768px) { .form-card { padding: 32px 24px; } }
+
+    .form-section-label {
+      font-size: 10px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 20px; padding-bottom: 12px;
+      border-bottom: 1px solid rgba(0,0,0,0.07);
+      display: block;
+    }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 0; }
+    @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
+    .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    @media (max-width: 600px) { .form-row-3 { grid-template-columns: 1fr; } }
+
+    .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
+    .form-group.full { grid-column: 1 / -1; }
+    .form-group label { font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--mid); }
+    .form-group input, .form-group select, .form-group textarea {
+      font-family: var(--sans); font-size: 14px; font-weight: 300; color: var(--navy);
+      background: var(--ivory); border: 1px solid rgba(0,0,0,0.1); border-radius: 2px;
+      padding: 11px 14px; outline: none; transition: border-color 0.2s; width: 100%;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--gold); background: var(--white); }
+    .form-group textarea { resize: vertical; min-height: 100px; }
+    .form-hint { font-size: 11px; color: var(--mid); margin-top: 2px; }
+
+    .form-spacer { margin-bottom: 32px; }
+
+    .form-submit {
+      width: 100%; font-family: var(--sans); font-size: 11px; font-weight: 600;
+      letter-spacing: 0.14em; text-transform: uppercase; color: var(--navy);
+      background: var(--gold); border: none; padding: 16px; border-radius: 2px;
+      cursor: pointer; transition: background 0.2s, transform 0.2s; margin-top: 8px;
+    }
+    .form-submit:hover { background: var(--gold2); transform: translateY(-1px); }
+
+    .form-privacy {
+      font-size: 11px; font-weight: 300; color: var(--mid);
+      text-align: center; margin-top: 16px; line-height: 1.7;
+    }
+
+    /* FOOTER */
+    footer { background: var(--navy); border-top: 1px solid rgba(255,255,255,0.06); padding: 48px 0 32px; }
+    .footer-bottom { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+    .footer-bottom p { font-size: 11px; font-weight: 300; color: rgba(255,255,255,0.3); letter-spacing: 0.04em; }
+    .footer-licenses { display: flex; gap: 12px; flex-wrap: wrap; }
+    .license-badge { font-size: 9px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.25); border: 1px solid rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 2px; }
+    .footer-back { font-size: 11px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.4); text-decoration: none; transition: color 0.2s; }
+    .footer-back:hover { color: var(--gold); }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="index.html" class="nav-brand">
+      <span class="name">The Thomas Group</span>
+      <span class="sub">LoKation Real Estate</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="index.html#about">About</a></li>
+      <li><a href="index.html#services">Services</a></li>
+      <li><a href="index.html#land">Land</a></li>
+      <li><a href="index.html#contact">Contact</a></li>
+      <li><a href="https://ttglending.morty.com" target="_blank" class="nav-cta">Lending</a></li>
+    </ul>
+  </nav>
+
+  <div class="page-header">
+    <div class="page-header-bg"></div>
+    <div class="page-header-grid"></div>
+    <div class="container">
+      <div class="page-header-inner">
+        <div class="breadcrumb">
+          <a href="index.html">Home</a> › <span>Property Evaluation</span>
+        </div>
+        <div class="page-eyebrow">Free Advisory Tool</div>
+        <h1 class="page-title">Property <em>Evaluation</em></h1>
+        <p class="page-desc">Submit your property details for a comprehensive analysis covering income, expenses, rent rolls, market comps, and capital improvement opportunities. We'll respond within one business day.</p>
+      </div>
+    </div>
+  </div>
+
+  <section class="form-section">
+    <div class="container">
+      <div class="form-card">
+
+        <form onsubmit="handleSubmit(event)">
+
+          <!-- Property Details -->
+          <span class="form-section-label">Property Details</span>
+          <div class="form-group full">
+            <label>Property Address</label>
+            <input type="text" placeholder="123 Main St, Denver, CO 80202" />
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>City</label>
+              <input type="text" placeholder="Denver" />
+            </div>
+            <div class="form-group">
+              <label>Zip Code</label>
+              <input type="text" placeholder="80202" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Property Type</label>
+              <select>
+                <option value="">Select one...</option>
+                <option>Multifamily (2–4 units)</option>
+                <option>Multifamily (5–20 units)</option>
+                <option>Multifamily (21–50 units)</option>
+                <option>Single-Family Rental</option>
+                <option>Short-Term Rental</option>
+                <option>Mixed-Use</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Year Built</label>
+              <input type="number" placeholder="1985" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Number of Units</label>
+              <input type="number" placeholder="12" />
+            </div>
+            <div class="form-group">
+              <label>Current Occupancy (%)</label>
+              <input type="number" placeholder="92" min="0" max="100" />
+            </div>
+          </div>
+          <div class="form-spacer"></div>
+
+          <!-- Financials -->
+          <span class="form-section-label">Financial Overview</span>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Gross Monthly Income ($)</label>
+              <input type="number" placeholder="18,500" />
+            </div>
+            <div class="form-group">
+              <label>Monthly Operating Expenses ($)</label>
+              <input type="number" placeholder="7,200" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Outstanding Debt Balance ($)</label>
+              <input type="number" placeholder="1,200,000" />
+              <span class="form-hint">Leave blank if unencumbered</span>
+            </div>
+            <div class="form-group">
+              <label>Current Interest Rate (%)</label>
+              <input type="number" placeholder="6.25" step="0.01" />
+            </div>
+          </div>
+          <div class="form-group full">
+            <label>Recent Capital Improvements</label>
+            <textarea placeholder="e.g. Roof replaced 2022, new HVAC 2021, unit renovations ongoing..."></textarea>
+          </div>
+          <div class="form-spacer"></div>
+
+          <!-- Goals -->
+          <span class="form-section-label">Your Goals</span>
+          <div class="form-group">
+            <label>Primary Goal</label>
+            <select>
+              <option value="">Select one...</option>
+              <option>Sell in the next 6 months</option>
+              <option>Sell in the next 12 months</option>
+              <option>Evaluate value before deciding</option>
+              <option>Explore refinancing options</option>
+              <option>Identify value-add opportunities</option>
+            </select>
+          </div>
+          <div class="form-group full">
+            <label>Additional Context</label>
+            <textarea placeholder="Anything else we should know about the property or your situation..."></textarea>
+          </div>
+          <div class="form-spacer"></div>
+
+          <!-- Contact -->
+          <span class="form-section-label">Your Contact Information</span>
+          <div class="form-row">
+            <div class="form-group">
+              <label>First Name</label>
+              <input type="text" placeholder="Jane" />
+            </div>
+            <div class="form-group">
+              <label>Last Name</label>
+              <input type="text" placeholder="Doe" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Email Address</label>
+              <input type="email" placeholder="jane@example.com" />
+            </div>
+            <div class="form-group">
+              <label>Phone Number</label>
+              <input type="tel" placeholder="(720) 000-0000" />
+            </div>
+          </div>
+
+          <button type="submit" class="form-submit">Submit for Evaluation</button>
+          <p class="form-privacy">Your information is kept strictly confidential and will only be used to prepare your evaluation.</p>
+
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <div class="footer-bottom">
+        <p>&copy; 2026 The Thomas Group · LoKation Real Estate · All rights reserved.</p>
+        <a href="index.html" class="footer-back">← Back to Main Site</a>
+        <div class="footer-licenses">
+          <span class="license-badge">CO IA 100109810</span>
+          <span class="license-badge">CO ER 040045933</span>
+          <span class="license-badge">NMLS 2750798</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    function handleSubmit(e) {
+      e.preventDefault();
+      const btn = e.target.querySelector('.form-submit');
+      btn.textContent = 'Submitted — We\'ll be in touch shortly';
+      btn.style.background = '#2d6a4f';
+      btn.style.color = '#fff';
+      btn.disabled = true;
+    }
+  </script>
+</body>
+</html>
