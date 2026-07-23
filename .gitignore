@@ -1,0 +1,5 @@
+# Portal — property/owner data and the one-time Firestore migration tool never belong in the
+# public repo. Data now lives in Firestore, gated by Firebase Auth; these local files are only
+# for rebuilding/re-migrating the dataset (e.g. after adding AZ/TX) and stay on-machine only.
+portal/data/*.json
+portal/migrate.html

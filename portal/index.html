@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TTG Portal — Property Intelligence</title>
+<link rel="icon" href="../favicon.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  :root{
+    --navy:#0d1b2a; --navy2:#162333; --gold:#b89d6a; --gold2:#d4b87a;
+    --ivory:#f5f2ed; --white:#ffffff; --mid:#8a8f98; --dark:#1c2635;
+    --rule:rgba(184,157,106,0.25);
+    --serif:'Cormorant Garamond',Georgia,serif;
+    --sans:'Inter',system-ui,sans-serif;
+    --green:#3f8f5f; --amber:#c98a2c; --gray:#8a8f98; --red:#b5482f;
+  }
+  html,body{height:100%;}
+  body{font-family:var(--sans);font-size:13.5px;color:var(--navy);background:var(--ivory);overflow:hidden;}
+  a{color:inherit;}
+
+  /* ── TOP BAR ─────────────────────────────────────── */
+  #topbar{
+    height:56px;background:var(--navy);display:flex;align-items:center;
+    padding:0 18px;gap:20px;border-bottom:1px solid var(--rule);
+    position:relative;z-index:500;
+  }
+  .brand{display:flex;flex-direction:column;line-height:1.1;text-decoration:none;margin-right:8px;}
+  .brand .name{font-family:var(--serif);font-size:17px;color:var(--white);font-weight:500;letter-spacing:.02em;}
+  .brand .sub{font-size:8.5px;color:var(--gold);letter-spacing:.18em;text-transform:uppercase;font-weight:600;}
+
+  .stat-pill{display:flex;flex-direction:column;line-height:1.1;color:rgba(255,255,255,.8);padding:4px 12px;border-left:1px solid var(--rule);}
+  .stat-pill b{color:var(--white);font-size:15px;font-family:var(--serif);}
+  .stat-pill span{font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--gold2);}
+
+  .topbar-spacer{flex:1;}
+
+  .associate-field{display:flex;align-items:center;gap:6px;color:rgba(255,255,255,.7);font-size:11px;}
+  .associate-field input{
+    background:rgba(255,255,255,.08);border:1px solid var(--rule);color:var(--white);
+    padding:6px 10px;border-radius:3px;font-size:12px;width:140px;font-family:var(--sans);
+  }
+  .associate-field input:focus{outline:none;border-color:var(--gold);}
+
+  .home-link{color:rgba(255,255,255,.6);font-size:11px;text-decoration:none;letter-spacing:.06em;text-transform:uppercase;padding:6px 10px;border:1px solid var(--rule);border-radius:3px;}
+  .home-link:hover{color:var(--gold2);border-color:var(--gold);}
+
+  #logout-btn{background:var(--gold);color:var(--white);border-color:var(--gold);}
+  #logout-btn:hover{background:var(--gold2);border-color:var(--gold2);color:var(--white);}
+
+  /* ── PROTOTYPE BANNER ───────────────────────────── */
+  #proto-banner{
+    background:var(--gold);color:var(--navy);font-size:11.5px;font-weight:500;
+    padding:6px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  }
+  #proto-banner b{font-weight:700;}
+  #proto-banner button{
+    margin-left:auto;background:none;border:1px solid rgba(13,27,42,.35);color:var(--navy);
+    font-size:10px;padding:3px 9px;border-radius:3px;cursor:pointer;text-transform:uppercase;letter-spacing:.05em;
+  }
+  #proto-banner.hidden{display:none;}
+
+  /* ── FILTER BAR ──────────────────────────────────── */
+  #filterbar{
+    background:var(--white);border-bottom:1px solid #e4e0d8;padding:10px 18px;
+    display:flex;gap:10px;align-items:center;flex-wrap:wrap;position:relative;z-index:400;
+  }
+  #filterbar input[type=text], #filterbar select{
+    font-family:var(--sans);font-size:12px;padding:7px 10px;border:1px solid #d9d4c8;
+    border-radius:3px;background:var(--white);color:var(--navy);
+  }
+  #filterbar input[type=text]{width:220px;}
+  #filterbar select{cursor:pointer;}
+  #filterbar label.chk{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--mid);cursor:pointer;user-select:none;}
+  #filterbar .divider{width:1px;height:22px;background:#e4e0d8;}
+  .clear-filters{font-size:11px;color:var(--gold);cursor:pointer;text-decoration:underline;background:none;border:none;}
+
+  .maturity-filter{display:flex;align-items:center;gap:6px;}
+  .maturity-label{font-size:11px;color:var(--mid);white-space:nowrap;margin-right:2px;}
+  .maturity-filter input[type=date]{
+    font-family:var(--sans);font-size:11.5px;padding:6px 8px;border:1px solid #d9d4c8;
+    border-radius:3px;background:var(--white);color:var(--navy);width:132px;
+  }
+  .maturity-filter .to-sep{color:var(--mid);font-size:11px;}
+  .maturity-presets{display:flex;gap:4px;margin-left:2px;}
+  .preset-btn{
+    font-family:var(--sans);font-size:10.5px;font-weight:600;color:var(--mid);
+    background:var(--white);border:1px solid #d9d4c8;border-radius:3px;padding:6px 8px;cursor:pointer;
+  }
+  .preset-btn:hover{border-color:var(--gold);color:var(--navy);}
+  .preset-btn.active{background:var(--gold);border-color:var(--gold);color:var(--navy);}
+  .filter-count{margin-left:auto;font-size:11.5px;color:var(--mid);white-space:nowrap;}
+  .filter-count b{color:var(--navy);}
+
+  /* ── MAIN LAYOUT ─────────────────────────────────── */
+  #main{display:flex;height:calc(100vh - 56px - 34px - 47px);}
+  #main.no-banner{height:calc(100vh - 56px - 47px);}
+
+  #listpane{width:380px;min-width:380px;background:var(--white);border-right:1px solid #e4e0d8;overflow-y:auto;}
+  #maparea{flex:1;position:relative;}
+  #map{width:100%;height:100%;}
+
+  .prop-row{padding:11px 16px;border-bottom:1px solid #f0ede5;cursor:pointer;transition:background .12s;}
+  .prop-row:hover{background:var(--ivory);}
+  .prop-row.active{background:#f2ead8;}
+  .prop-row-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+  .prop-addr{font-weight:600;font-size:12.8px;color:var(--navy);}
+  .prop-sub{font-size:11px;color:var(--mid);margin-top:2px;}
+  .status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+  .prop-meta{display:flex;gap:10px;margin-top:6px;font-size:10.5px;color:var(--mid);}
+  .tag{display:inline-block;font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;padding:2px 6px;border-radius:2px;background:var(--ivory);color:var(--mid);font-weight:600;}
+  .empty-state{padding:40px 24px;text-align:center;color:var(--mid);font-size:12.5px;line-height:1.6;}
+
+  /* status colors used both in list dots and map markers */
+  .status-not_contacted{background:var(--gray);}
+  .status-needs_databasing{background:var(--amber);}
+  .status-contacted{background:var(--green);}
+
+  /* ── DETAIL DRAWER ───────────────────────────────── */
+  #drawer{
+    position:fixed;top:0;right:-460px;width:460px;height:100%;background:var(--white);
+    box-shadow:-6px 0 24px rgba(0,0,0,.18);z-index:1100;transition:right .25s var(--easing,ease);
+    display:flex;flex-direction:column;
+  }
+  #drawer.open{right:0;}
+  #drawer-header{background:var(--navy);color:var(--white);padding:18px 20px;position:relative;}
+  #drawer-header .close-btn{position:absolute;top:14px;right:16px;background:none;border:none;color:rgba(255,255,255,.6);font-size:20px;cursor:pointer;line-height:1;}
+  #drawer-header .close-btn:hover{color:var(--white);}
+  #drawer-header .d-addr{font-family:var(--serif);font-size:20px;font-weight:500;padding-right:24px;}
+  #drawer-header .d-sub{font-size:11.5px;color:var(--gold2);margin-top:4px;letter-spacing:.03em;}
+  #drawer-body{flex:1;overflow-y:auto;padding:0 0 24px;}
+
+  .d-section{padding:16px 20px;border-bottom:1px solid #ece8de;}
+  .d-section h4{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);font-weight:700;margin-bottom:12px;}
+  .d-section-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
+  .d-section-head h4{margin-bottom:12px;}
+  .d-field{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:5px 0;font-size:12.5px;}
+  .d-field .k{color:var(--mid);flex-shrink:0;width:120px;}
+  .d-field .v{text-align:right;flex:1;color:var(--navy);font-weight:500;word-break:break-word;}
+  .d-field .v input{width:100%;text-align:right;font-size:12.5px;padding:4px 6px;border:1px solid var(--gold);border-radius:3px;font-family:var(--sans);}
+  .edit-pencil{cursor:pointer;color:var(--mid);font-size:11px;margin-left:6px;flex-shrink:0;}
+  .edit-pencil:hover{color:var(--gold);}
+  .diff-badge{display:block;font-size:9.5px;color:var(--red);text-align:right;margin-top:2px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;}
+  .diff-badge.inline{margin-top:0;white-space:nowrap;}
+  .revert-link{font-size:9.5px;color:var(--gold);text-decoration:underline;cursor:pointer;margin-left:6px;text-transform:none;letter-spacing:0;}
+
+  .status-buttons{display:flex;gap:8px;}
+  .status-btn{
+    flex:1;padding:9px 6px;border-radius:4px;border:1.5px solid #d9d4c8;background:var(--white);
+    font-size:11px;font-weight:600;cursor:pointer;color:var(--mid);text-align:center;letter-spacing:.02em;
+    transition:all .12s;
+  }
+  .status-btn:hover{border-color:var(--gold);}
+  .status-btn.active[data-status="contacted"]{background:var(--green);border-color:var(--green);color:var(--white);}
+  .status-btn.active[data-status="needs_databasing"]{background:var(--amber);border-color:var(--amber);color:var(--white);}
+  .status-btn.active[data-status="not_contacted"]{background:var(--gray);border-color:var(--gray);color:var(--white);}
+
+  .notes-list{margin-top:12px;display:flex;flex-direction:column;gap:8px;max-height:220px;overflow-y:auto;}
+  .note-item{background:var(--ivory);border-radius:4px;padding:8px 10px;font-size:12px;}
+  .note-item .note-meta{font-size:10px;color:var(--mid);margin-bottom:3px;font-weight:600;}
+  .note-form{display:flex;gap:6px;margin-top:10px;}
+  .note-form textarea{
+    flex:1;font-family:var(--sans);font-size:12px;padding:8px;border:1px solid #d9d4c8;border-radius:4px;
+    resize:none;height:56px;
+  }
+  .note-form button{
+    background:var(--navy);color:var(--white);border:none;border-radius:4px;padding:0 14px;font-size:11px;
+    font-weight:600;cursor:pointer;text-transform:uppercase;letter-spacing:.04em;
+  }
+  .note-form button:hover{background:var(--navy2);}
+
+  .loan-placeholder{font-size:11.5px;color:var(--mid);font-style:italic;background:var(--ivory);padding:10px;border-radius:4px;}
+
+  .loan-caption{font-size:10.5px;color:var(--mid);margin-bottom:10px;line-height:1.5;}
+  .loan-current{background:var(--ivory);border-radius:4px;padding:10px 12px;}
+  .loan-row{display:flex;justify-content:space-between;gap:10px;padding:3px 0;font-size:12.5px;}
+  .loan-row .k{color:var(--mid);}
+  .loan-row .v{color:var(--navy);font-weight:500;text-align:right;}
+  .loan-row .v.loan-maturity-val{color:var(--red);font-weight:700;}
+  .loan-history{margin-top:12px;}
+  .loan-history-label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--mid);font-weight:600;margin-bottom:6px;}
+  .loan-history-item{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--mid);padding:4px 0;border-top:1px solid #ece8de;}
+  .loan-history-item span:first-child{color:var(--navy);flex-shrink:0;}
+  .loan-history-item span:last-child{text-align:right;}
+
+  .tag-urgent{background:var(--red);color:var(--white);}
+
+  /* ── CONTACT ENTRIES (multi-value, color-tagged) ─── */
+  .contact-group{margin-top:14px;}
+  .contact-group:first-of-type{margin-top:0;}
+  .contact-group-label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--mid);font-weight:600;margin-bottom:6px;}
+  .contact-entries{display:flex;flex-direction:column;gap:5px;}
+  .contact-empty{font-size:12px;color:var(--mid);}
+  .contact-entry{display:flex;align-items:center;gap:8px;}
+  .color-dot{
+    width:11px;height:11px;border-radius:50%;flex-shrink:0;cursor:pointer;
+    border:1.5px solid #d9d4c8;background:transparent;transition:transform .1s;
+  }
+  .color-dot:hover{transform:scale(1.15);}
+  .color-dot.dot-none{background:var(--white);border-color:#d9d4c8;}
+  .color-dot.dot-green{background:var(--green);border-color:var(--green);}
+  .color-dot.dot-yellow{background:var(--amber);border-color:var(--amber);opacity:.6;}
+  .color-dot.dot-red{background:var(--red);border-color:var(--red);}
+  .contact-value{font-size:12.5px;color:var(--navy);text-decoration:none;flex:1;word-break:break-all;}
+  .contact-value:hover{color:var(--gold);text-decoration:underline;}
+  .contact-value.tagged-green{color:var(--green);}
+  .contact-value.tagged-red{color:var(--red);}
+  .contact-value.tagged-yellow{color:var(--dark);opacity:.55;}
+  .contact-remove{color:var(--mid);cursor:pointer;font-size:14px;line-height:1;flex-shrink:0;padding:0 2px;}
+  .contact-remove:hover{color:var(--red);}
+  .contact-add-row{display:flex;gap:6px;margin-top:8px;}
+  .contact-add-row input{
+    flex:1;font-family:var(--sans);font-size:12px;padding:6px 8px;border:1px solid #d9d4c8;border-radius:3px;
+  }
+  .contact-add-row button{
+    background:var(--ivory);color:var(--navy);border:1px solid #d9d4c8;border-radius:3px;padding:0 12px;
+    font-size:11px;font-weight:600;cursor:pointer;text-transform:uppercase;letter-spacing:.03em;
+  }
+  .contact-add-row button:hover{border-color:var(--gold);color:var(--gold);}
+
+  #overlay{position:fixed;inset:0;background:rgba(13,27,42,.35);z-index:1050;opacity:0;pointer-events:none;transition:opacity .2s;}
+  #overlay.open{opacity:1;pointer-events:auto;}
+
+  #loading{position:fixed;inset:0;background:var(--ivory);z-index:2000;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;}
+  #loading .spin{width:28px;height:28px;border:3px solid #e4e0d8;border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  #loading span{font-size:12px;color:var(--mid);letter-spacing:.04em;}
+  #loading.hidden{display:none;}
+
+  /* ── LOGIN SCREEN ────────────────────────────────── */
+  #login-screen{
+    position:fixed;inset:0;background:var(--navy);z-index:3000;
+    display:flex;align-items:center;justify-content:center;
+    background-image:radial-gradient(circle at 30% 20%, rgba(184,157,106,0.08), transparent 55%);
+  }
+  #login-screen.hidden{display:none;}
+  .login-card{
+    width:340px;background:var(--navy2);border:1px solid var(--rule);border-radius:6px;
+    padding:36px 32px 30px;box-shadow:0 20px 60px rgba(0,0,0,.4);
+  }
+  .login-brand{text-align:center;margin-bottom:26px;}
+  .login-brand .name{font-family:var(--serif);font-size:24px;color:var(--white);font-weight:500;display:block;}
+  .login-brand .sub{font-size:9px;color:var(--gold);letter-spacing:.18em;text-transform:uppercase;font-weight:600;}
+  #login-form label{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.55);margin-bottom:6px;margin-top:16px;}
+  #login-form input{
+    width:100%;background:rgba(255,255,255,.06);border:1px solid var(--rule);color:var(--white);
+    padding:10px 12px;border-radius:3px;font-size:13px;font-family:var(--sans);
+  }
+  #login-form input:focus{outline:none;border-color:var(--gold);}
+  #login-form button{
+    width:100%;margin-top:22px;background:var(--gold);color:var(--navy);border:none;border-radius:3px;
+    padding:11px;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;
+    transition:background .15s;
+  }
+  #login-form button:hover{background:var(--gold2);}
+  .login-error{color:#e08a72;font-size:11.5px;margin-top:14px;text-align:center;min-height:14px;}
+  .login-note{color:rgba(255,255,255,.35);font-size:10px;text-align:center;margin-top:18px;line-height:1.5;}
+
+  .leaflet-popup-content{font-family:var(--sans);font-size:12px;}
+  .leaflet-popup-content b{font-family:var(--serif);font-size:14px;}
+
+  /* ── MAP BASEMAP TOGGLE ──────────────────────────── */
+  .map-layer-toggle{
+    display:flex;background:var(--navy);border-radius:4px;overflow:hidden;
+    box-shadow:0 1px 5px rgba(0,0,0,.4);border:1px solid var(--rule);
+  }
+  .map-layer-toggle .layer-btn{
+    font-family:var(--sans);font-size:11px;font-weight:600;letter-spacing:.03em;
+    padding:7px 12px;border:none;background:transparent;color:rgba(255,255,255,.65);cursor:pointer;
+  }
+  .map-layer-toggle .layer-btn.active{background:var(--gold);color:var(--navy);}
+  .map-layer-toggle .layer-btn:not(.active):hover{color:var(--white);}
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-brand">
+      <span class="name">TTG Portal</span>
+      <span class="sub">Property Intelligence</span>
+    </div>
+    <form id="login-form">
+      <label for="login-email">Email</label>
+      <input type="email" id="login-email" autocomplete="username" required />
+      <label for="login-password">Password</label>
+      <input type="password" id="login-password" autocomplete="current-password" required />
+      <div class="login-error" id="login-error"></div>
+      <button type="submit">Sign In</button>
+    </form>
+    <div class="login-note">Internal tool — TTG / TTG Lending associates only.</div>
+  </div>
+</div>
+
+<div id="loading" class="hidden"><div class="spin"></div><span>Loading property data…</span></div>
+
+<div id="topbar">
+  <a href="../index.html" class="brand">
+    <span class="name">TTG Portal</span>
+    <span class="sub">Property Intelligence</span>
+  </a>
+  <div class="stat-pill"><b id="stat-total">–</b><span>Properties</span></div>
+  <div class="stat-pill"><b id="stat-contacted">–</b><span>Contacted</span></div>
+  <div class="stat-pill"><b id="stat-needs">–</b><span>Needs DB</span></div>
+  <div class="stat-pill"><b id="stat-overrides">–</b><span>Overridden</span></div>
+  <div class="topbar-spacer"></div>
+  <div class="associate-field">
+    <span>Logged in as</span>
+    <b id="associate-display" style="color:var(--gold2);"></b>
+    <button id="logout-btn" class="home-link" style="cursor:pointer;">Log Out</button>
+  </div>
+  <a href="../index.html" class="home-link">Main Site</a>
+</div>
+
+<div id="proto-banner">
+  <span><b>Prototype v1 —</b> data snapshotted from the Google Sheet at load time; contacted status, notes, and overrides are saved only in this browser (not yet synced across the team). County coverage: Denver, Jefferson, Adams, Boulder, Arapahoe, CO.</span>
+  <button id="dismiss-banner">Dismiss</button>
+</div>
+
+<div id="filterbar">
+  <input type="text" id="f-search" placeholder="Search owner, address, or APN…" />
+  <select id="f-county">
+    <option value="">All Counties</option>
+  </select>
+  <select id="f-type">
+    <option value="">All Types</option>
+    <option value="sfr">Single Family (1 unit)</option>
+    <option value="small_mf">Small Multifamily (2–4 units)</option>
+    <option value="mf">Multifamily (5+ units)</option>
+  </select>
+  <select id="f-status">
+    <option value="">Any CRM Status</option>
+    <option value="not_contacted">Not Contacted</option>
+    <option value="needs_databasing">Needs Databasing</option>
+    <option value="contacted">Contacted</option>
+  </select>
+  <select id="f-state" disabled title="Arizona and Texas coverage coming soon">
+    <option value="CO">Colorado</option>
+    <option value="AZ" disabled>Arizona (soon)</option>
+    <option value="TX" disabled>Texas (soon)</option>
+  </select>
+  <div class="divider"></div>
+  <div class="maturity-filter">
+    <span class="maturity-label">Loan Matures</span>
+    <input type="date" id="f-maturity-from" title="Maturity on or after" />
+    <span class="to-sep">&ndash;</span>
+    <input type="date" id="f-maturity-to" title="Maturity on or before" />
+    <div class="maturity-presets">
+      <button type="button" class="preset-btn" data-months="6">6mo</button>
+      <button type="button" class="preset-btn" data-months="12">12mo</button>
+      <button type="button" class="preset-btn" data-months="24">24mo</button>
+    </div>
+  </div>
+  <div class="divider"></div>
+  <label class="chk"><input type="checkbox" id="f-has-contact" /> Has phone/email</label>
+  <label class="chk"><input type="checkbox" id="f-overridden" /> Overridden only</label>
+  <button class="clear-filters" id="clear-filters">Clear filters</button>
+  <div class="filter-count"><b id="filter-count-n">0</b> matching</div>
+</div>
+
+<div id="main">
+  <div id="listpane"></div>
+  <div id="maparea"><div id="map"></div></div>
+</div>
+
+<div id="overlay"></div>
+<div id="drawer">
+  <div id="drawer-header">
+    <button class="close-btn" id="drawer-close">&times;</button>
+    <div class="d-addr" id="d-addr">—</div>
+    <div class="d-sub" id="d-sub">—</div>
+  </div>
+  <div id="drawer-body"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="app.js?v=10"></script>
+</body>
+</html>
