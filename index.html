@@ -1232,6 +1232,16 @@
       padding: 4px 8px;
       border-radius: 2px;
     }
+    a.portal-login-badge {
+      text-decoration: none;
+      color: var(--gold);
+      border-color: rgba(197,160,80,0.35);
+      transition: color 0.2s, border-color 0.2s;
+    }
+    a.portal-login-badge:hover {
+      color: var(--gold2);
+      border-color: var(--gold2);
+    }
 
     @media (max-width: 900px) {
       .footer-inner { grid-template-columns: 1fr 1fr; gap: 32px; }
@@ -1879,6 +1889,7 @@
           <span class="license-badge">CO IA 100109810</span>
           <span class="license-badge">CO ER 040045933</span>
           <span class="license-badge">NMLS 2750798</span>
+          <a href="/portal/" class="license-badge portal-login-badge">TTG Portal Login</a>
         </div>
       </div>
     </div>
