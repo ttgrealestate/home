@@ -190,6 +190,13 @@
   .loan-history-item span:last-child{text-align:right;}
 
   .tag-urgent{background:var(--red);color:var(--white);}
+  .tag-placeholder{background:var(--amber);color:var(--white);}
+
+  .placeholder-banner{
+    margin:14px 20px 0;padding:12px 14px;background:rgba(184,157,106,.14);border:1px solid var(--rule);
+    border-radius:4px;font-size:12px;color:var(--navy);line-height:1.5;
+  }
+  .placeholder-banner strong{color:var(--gold);}
 
   /* ── CONTACT ENTRIES (multi-value, color-tagged) ─── */
   .contact-group{margin-top:14px;}
@@ -319,7 +326,7 @@
 </div>
 
 <div id="proto-banner">
-  <span><b>Prototype v1 —</b> data snapshotted from the Google Sheet at load time; contacted status, notes, and overrides are saved only in this browser (not yet synced across the team). County coverage: Denver, Jefferson, Adams, Boulder, Arapahoe, CO.</span>
+  <span><b>Prototype v1 —</b> Colorado coverage: Denver, Jefferson, Adams, Boulder, Arapahoe counties, plus loan-sourced records for other CO counties and Arizona with active loans. Records tagged "Needs Property Info" have loan data only — ownership/contact details are unverified until an associate fills them in.</span>
   <button id="dismiss-banner">Dismiss</button>
 </div>
 
@@ -340,10 +347,16 @@
     <option value="needs_databasing">Needs Databasing</option>
     <option value="contacted">Contacted</option>
   </select>
-  <select id="f-state" disabled title="Arizona and Texas coverage coming soon">
+  <select id="f-state">
+    <option value="">All States</option>
     <option value="CO">Colorado</option>
-    <option value="AZ" disabled>Arizona (soon)</option>
+    <option value="AZ">Arizona</option>
     <option value="TX" disabled>Texas (soon)</option>
+  </select>
+  <select id="f-loan-category">
+    <option value="">Any Loan Type</option>
+    <option value="Multifamily">Multifamily Loans</option>
+    <option value="Residential Investment">Residential Investment Loans</option>
   </select>
   <div class="divider"></div>
   <div class="maturity-filter">
@@ -383,6 +396,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
-<script src="app.js?v=10"></script>
+<script src="app.js?v=11"></script>
 </body>
 </html>

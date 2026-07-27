@@ -204,7 +204,13 @@ function setContactEntries(prop, field, entries) {
 }
 function propertyType(prop) {
   const u = prop.units;
-  if (!u || u <= 1) return "sfr";
+  if (!u || u <= 1) {
+    // no verified unit count (common for loan-sourced placeholder records) — fall back
+    // to the loan's own category rather than defaulting everything to Single Family
+    const loans = prop.loans || [];
+    if (loans.length && loans[0].loan_type === "Multifamily") return "mf";
+    return "sfr";
+  }
   if (u <= 4) return "small_mf";
   return "mf";
 }
@@ -225,7 +231,8 @@ function fullAddress(prop) {
   const addr = effectiveValue(prop, "address");
   const city = effectiveValue(prop, "city");
   const zip = effectiveValue(prop, "zip");
-  return [addr, city ? city + ", CO" : "", zip].filter(Boolean).join(", ");
+  const state = prop.state || "CO";
+  return [addr, city ? city + ", " + state : "", zip].filter(Boolean).join(", ");
 }
 
 // ── loading ──────────────────────────────────────────────────
@@ -258,7 +265,7 @@ async function loadData() {
 }
 
 function populateCountyFilter() {
-  const counties = [...new Set(PROPERTIES.map(p => p.county))].sort();
+  const counties = [...new Set(PROPERTIES.map(p => p.county))].filter(Boolean).sort();
   const sel = document.getElementById("f-county");
   counties.forEach(c => {
     const opt = document.createElement("option");
@@ -370,7 +377,8 @@ function applyMarkerSelection() {
 
 function popupHtml(prop) {
   const owner = effectiveValue(prop, "adjusted_owner") || effectiveValue(prop, "owner") || "Unknown Owner";
-  return `<b>${escapeHtml(owner)}</b><br>${escapeHtml(fullAddress(prop))}<br><span style="color:#8a8f98">${propertyTypeLabel(prop)} · ${prop.units || "?"} units · ${prop.county} Co.</span>`;
+  const place = prop.county ? prop.county + " Co." : (prop.state || "");
+  return `<b>${escapeHtml(owner)}</b><br>${escapeHtml(fullAddress(prop))}<br><span style="color:#8a8f98">${propertyTypeLabel(prop)} · ${prop.units || "?"} units · ${escapeHtml(place)}</span>`;
 }
 
 function escapeHtml(s) {
@@ -382,9 +390,11 @@ function escapeHtml(s) {
 function currentFilters() {
   return {
     search: document.getElementById("f-search").value.trim().toLowerCase(),
+    state: document.getElementById("f-state").value,
     county: document.getElementById("f-county").value,
     type: document.getElementById("f-type").value,
     status: document.getElementById("f-status").value,
+    loanCategory: document.getElementById("f-loan-category").value,
     hasContact: document.getElementById("f-has-contact").checked,
     overriddenOnly: document.getElementById("f-overridden").checked,
     maturityFrom: document.getElementById("f-maturity-from").value,
@@ -393,11 +403,16 @@ function currentFilters() {
 }
 
 function matchesFilters(prop, f) {
+  if (f.state && (prop.state || "CO") !== f.state) return false;
   if (f.county && prop.county !== f.county) return false;
   if (f.type && propertyType(prop) !== f.type) return false;
   const rec = getRecord(prop.id);
   if (f.status && rec.status !== f.status) return false;
   if (f.overriddenOnly && (!rec.overrides || Object.keys(rec.overrides).length === 0)) return false;
+  if (f.loanCategory) {
+    const loans = prop.loans || [];
+    if (!loans.length || loans[0].loan_type !== f.loanCategory) return false;
+  }
   if (f.hasContact) {
     const phones = effectiveValue(prop, "phones") || [];
     const emails = effectiveValue(prop, "emails") || [];
@@ -455,6 +470,7 @@ function rowHtml(prop) {
   const owner = effectiveValue(prop, "adjusted_owner") || effectiveValue(prop, "owner") || "Unknown Owner";
   const addr = fullAddress(prop);
   const overridden = rec.overrides && Object.keys(rec.overrides).length > 0;
+  const place = prop.county ? prop.county + " Co." : (prop.state || "");
   return `
   <div class="prop-row${prop.id === activeId ? " active" : ""}" data-id="${escapeHtml(prop.id)}">
     <div class="prop-row-top">
@@ -465,7 +481,8 @@ function rowHtml(prop) {
         <div class="prop-meta">
           <span>${propertyTypeLabel(prop)}</span>
           <span>${prop.units || "?"} units</span>
-          <span>${prop.county} Co.</span>
+          <span>${escapeHtml(place)}</span>
+          ${prop.is_placeholder ? '<span class="tag tag-placeholder">Needs Property Info</span>' : ""}
           ${overridden ? '<span class="tag">Edited</span>' : ""}
           ${loanTagHtml(prop)}
         </div>
@@ -512,7 +529,12 @@ function openDrawer(id) {
   const rec = getRecord(id);
 
   document.getElementById("d-addr").textContent = fullAddress(prop) || "Address unknown";
-  document.getElementById("d-sub").textContent = `${prop.county} County · APN ${prop.apn || "—"} · ${propertyTypeLabel(prop)}`;
+  const subParts = [];
+  if (prop.county) subParts.push(prop.county + " County, " + (prop.state || "CO"));
+  else subParts.push(prop.state || "CO");
+  subParts.push("APN " + (prop.apn || "—"));
+  subParts.push(propertyTypeLabel(prop));
+  document.getElementById("d-sub").textContent = subParts.join(" · ");
 
   const wasOpen = document.getElementById("drawer").classList.contains("open");
   const body = document.getElementById("drawer-body");
@@ -580,6 +602,12 @@ function drawerBodyHtml(prop, rec) {
   const contactOverridden = isOverridden(prop, "phones") || isOverridden(prop, "emails");
 
   return `
+  ${prop.is_placeholder ? `
+  <div class="placeholder-banner">
+    <strong>No property record yet</strong> — this entry was created from a loan record with no matching
+    assessor data. Fill in ownership, contact, and property details below as you research it.
+  </div>` : ""}
+
   <div class="d-section">
     <h4>CRM Status</h4>
     <div class="status-buttons">
@@ -650,8 +678,9 @@ function loanSectionHtml(prop) {
   const current = loans[0];
   const history = loans.slice(1);
   return `
-    <div class="loan-caption">Matched by property address from the Colorado&nbsp;-&nbsp;Loans sheet${loans.length > 1 ? ` · ${loans.length} loans on file, most recent shown first` : ""}.</div>
+    <div class="loan-caption">Matched by property address from the ${prop.state === "AZ" ? "Arizona" : "Colorado"}&nbsp;-&nbsp;Loans sheet${loans.length > 1 ? ` · ${loans.length} loans on file, most recent shown first` : ""}.</div>
     <div class="loan-current">
+      <div class="loan-row"><span class="k">Loan Category</span><span class="v">${escapeHtml(current.loan_type || "—")}</span></div>
       <div class="loan-row"><span class="k">Lender</span><span class="v">${escapeHtml(current.lender || "—")}</span></div>
       <div class="loan-row"><span class="k">Borrower</span><span class="v">${escapeHtml(current.borrower || "—")}</span></div>
       <div class="loan-row"><span class="k">Loan Amount</span><span class="v">${escapeHtml(current.mortgage_amount || "—")}</span></div>
@@ -817,12 +846,17 @@ function clearMaturityPresetActive() {
 
 // ── wiring ───────────────────────────────────────────────────
 function initFilterBar() {
-  ["f-search", "f-county", "f-type", "f-status", "f-has-contact", "f-overridden", "f-maturity-from", "f-maturity-to"].forEach(id => {
+  ["f-search", "f-state", "f-county", "f-type", "f-status", "f-loan-category", "f-has-contact", "f-overridden", "f-maturity-from", "f-maturity-to"].forEach(id => {
     const el = document.getElementById(id);
     el.addEventListener(el.tagName === "INPUT" && el.type === "text" ? "input" : "change", () => {
       clearMaturityPresetActive();
       applyFilters();
     });
+  });
+  document.getElementById("f-state").addEventListener("change", (e) => {
+    const views = { CO: [[39.6, -104.9], 9], AZ: [[33.6, -111.9], 7] };
+    const view = views[e.target.value];
+    if (view && window.TTG_MAP) window.TTG_MAP.setView(view[0], view[1]);
   });
   document.querySelectorAll(".preset-btn").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -839,9 +873,11 @@ function initFilterBar() {
   });
   document.getElementById("clear-filters").addEventListener("click", () => {
     document.getElementById("f-search").value = "";
+    document.getElementById("f-state").value = "";
     document.getElementById("f-county").value = "";
     document.getElementById("f-type").value = "";
     document.getElementById("f-status").value = "";
+    document.getElementById("f-loan-category").value = "";
     document.getElementById("f-has-contact").checked = false;
     document.getElementById("f-overridden").checked = false;
     document.getElementById("f-maturity-from").value = "";
