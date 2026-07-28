@@ -88,7 +88,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 const OVERRIDABLE_FIELDS = [
-  "owner", "adjusted_owner", "owner_contact",
+  "owner", "adjusted_owner",
   "address", "city", "zip", "year_built", "units", "sale_price", "sale_date",
   "mailing_address", "mailing_city", "mailing_state"
 ];
@@ -97,7 +97,6 @@ const CONTACT_COLORS = ["green", "yellow", "red"]; // cycle order; null = untagg
 const FIELD_LABELS = {
   owner: "Owner (raw)",
   adjusted_owner: "Adjusted Owner",
-  owner_contact: "Owner Contact",
   address: "Site Address",
   city: "City",
   zip: "Zip",
@@ -186,13 +185,17 @@ function isOverridden(prop, field) {
   return !!(rec && rec.overrides && Object.prototype.hasOwnProperty.call(rec.overrides, field));
 }
 
-// Phones/emails support multiple entries plus a red/green/yellow tag per entry, so they're
-// stored as [{value, color}] once an associate touches them, separately from the simple
-// single-value overrides used for other fields. Master data (plain strings) has color: null.
+// Owner contacts/phones/emails all support multiple entries plus a red/green/yellow tag per
+// entry, so they're stored as [{value, color}] once an associate touches them, separately from
+// the simple single-value overrides used for other fields. Master data for phones/emails is
+// already an array of plain strings; owner_contact's master value is a single string (or empty),
+// so it's normalized into a one-item list here too. Master values always start with color: null.
 function getContactEntries(prop, field) {
   const rec = CRM[prop.id];
   if (rec && rec.overrides && rec.overrides[field]) return rec.overrides[field];
-  return (prop[field] || []).map(v => ({ value: v, color: null }));
+  const raw = prop[field];
+  if (Array.isArray(raw)) return raw.map(v => ({ value: v, color: null }));
+  return raw ? [{ value: raw, color: null }] : [];
 }
 function setContactEntries(prop, field, entries) {
   const rec = getRecord(prop.id);
@@ -329,6 +332,11 @@ function statusColor(status) {
   return { not_contacted: "#8a8f98", needs_databasing: "#c98a2c", contacted: "#3f8f5f" }[status] || "#8a8f98";
 }
 
+// a flag (loan/property info wrong) always shows red, overriding whatever the contact status is
+function markerColor(rec) {
+  return rec.flagged ? "#b5482f" : statusColor(rec.status);
+}
+
 // smaller + more transparent when zoomed out so overlapping dots pool into a heat glow;
 // larger + more opaque when zoomed in so individual properties are easy to click
 function dotStyleForZoom(zoom) {
@@ -339,7 +347,7 @@ function dotStyleForZoom(zoom) {
 
 function buildMarker(prop, style) {
   const rec = getRecord(prop.id);
-  const color = statusColor(rec.status);
+  const color = markerColor(rec);
   const marker = L.circleMarker([prop.lat, prop.lon], {
     radius: style.radius,
     color: "#fff",
@@ -397,6 +405,7 @@ function currentFilters() {
     loanCategory: document.getElementById("f-loan-category").value,
     hasContact: document.getElementById("f-has-contact").checked,
     overriddenOnly: document.getElementById("f-overridden").checked,
+    flaggedOnly: document.getElementById("f-flagged").checked,
     maturityFrom: document.getElementById("f-maturity-from").value,
     maturityTo: document.getElementById("f-maturity-to").value
   };
@@ -409,6 +418,7 @@ function matchesFilters(prop, f) {
   const rec = getRecord(prop.id);
   if (f.status && rec.status !== f.status) return false;
   if (f.overriddenOnly && (!rec.overrides || Object.keys(rec.overrides).length === 0)) return false;
+  if (f.flaggedOnly && !rec.flagged) return false;
   if (f.loanCategory) {
     const loans = prop.loans || [];
     if (!loans.length || loans[0].loan_type !== f.loanCategory) return false;
@@ -474,7 +484,7 @@ function rowHtml(prop) {
   return `
   <div class="prop-row${prop.id === activeId ? " active" : ""}" data-id="${escapeHtml(prop.id)}">
     <div class="prop-row-top">
-      <div class="status-dot status-${rec.status}"></div>
+      <div class="status-dot ${rec.flagged ? "status-flagged" : "status-" + rec.status}"></div>
       <div style="flex:1">
         <div class="prop-addr">${escapeHtml(addr || "Address unknown")}</div>
         <div class="prop-sub">${escapeHtml(owner)}</div>
@@ -482,6 +492,7 @@ function rowHtml(prop) {
           <span>${propertyTypeLabel(prop)}</span>
           <span>${prop.units || "?"} units</span>
           <span>${escapeHtml(place)}</span>
+          ${rec.flagged ? '<span class="tag tag-flagged">Flagged</span>' : ""}
           ${prop.is_placeholder ? '<span class="tag tag-placeholder">Needs Property Info</span>' : ""}
           ${overridden ? '<span class="tag">Edited</span>' : ""}
           ${loanTagHtml(prop)}
@@ -507,18 +518,20 @@ function renderMarkers() {
 
 function renderStats() {
   document.getElementById("stat-total").textContent = PROPERTIES.length.toLocaleString();
-  let contacted = 0, needs = 0, overridden = 0;
+  let contacted = 0, needs = 0, overridden = 0, flagged = 0;
   PROPERTIES.forEach(p => {
     const rec = CRM[p.id];
     if (rec) {
       if (rec.status === "contacted") contacted++;
       if (rec.status === "needs_databasing") needs++;
       if (rec.overrides && Object.keys(rec.overrides).length > 0) overridden++;
+      if (rec.flagged) flagged++;
     }
   });
   document.getElementById("stat-contacted").textContent = contacted.toLocaleString();
   document.getElementById("stat-needs").textContent = needs.toLocaleString();
   document.getElementById("stat-overrides").textContent = overridden.toLocaleString();
+  document.getElementById("stat-flagged").textContent = flagged.toLocaleString();
 }
 
 // ── drawer / CRM detail ──────────────────────────────────────
@@ -571,14 +584,18 @@ function editableField(prop, field) {
 }
 
 function contactEntryHtml(field, entry, idx) {
-  const isPhone = field === "phones";
-  const href = (isPhone ? "tel:" : "mailto:") + encodeURIComponent(entry.value);
   const dotClass = entry.color ? `dot-${entry.color}` : "dot-none";
   const valClass = entry.color ? `tagged-${entry.color}` : "";
+  // only phones/emails are meaningfully clickable (tel:/mailto:); owner contact names are plain text
+  const valueHtml = field === "phones"
+    ? `<a href="tel:${encodeURIComponent(entry.value)}" class="contact-value ${valClass}">${escapeHtml(entry.value)}</a>`
+    : field === "emails"
+      ? `<a href="mailto:${encodeURIComponent(entry.value)}" class="contact-value ${valClass}">${escapeHtml(entry.value)}</a>`
+      : `<span class="contact-value ${valClass}">${escapeHtml(entry.value)}</span>`;
   return `
   <div class="contact-entry" data-field="${field}" data-idx="${idx}">
     <span class="color-dot ${dotClass}" data-cycle-color title="Click to tag: none → green → yellow → red"></span>
-    <a href="${href}" class="contact-value ${valClass}">${escapeHtml(entry.value)}</a>
+    ${valueHtml}
     <span class="contact-remove" data-remove-entry title="Remove">&times;</span>
   </div>`;
 }
@@ -599,7 +616,7 @@ function contactGroupHtml(prop, field, label, placeholder) {
 }
 
 function drawerBodyHtml(prop, rec) {
-  const contactOverridden = isOverridden(prop, "phones") || isOverridden(prop, "emails");
+  const contactOverridden = isOverridden(prop, "owner_contact") || isOverridden(prop, "phones") || isOverridden(prop, "emails");
 
   return `
   ${prop.is_placeholder ? `
@@ -615,6 +632,9 @@ function drawerBodyHtml(prop, rec) {
       <button class="status-btn${rec.status === "needs_databasing" ? " active" : ""}" data-status="needs_databasing">Needs Databasing</button>
       <button class="status-btn${rec.status === "contacted" ? " active" : ""}" data-status="contacted">Contacted</button>
     </div>
+    <button class="flag-btn${rec.flagged ? " active" : ""}" id="flag-toggle" type="button">
+      ${rec.flagged ? "⚑ Flagged — Loan/Property Info Incorrect" : "⚑ Flag Loan/Property Info as Incorrect"}
+    </button>
   </div>
 
   <div class="d-section">
@@ -648,7 +668,6 @@ function drawerBodyHtml(prop, rec) {
     <h4>Ownership</h4>
     ${editableField(prop, "owner")}
     ${editableField(prop, "adjusted_owner")}
-    ${editableField(prop, "owner_contact")}
     ${editableField(prop, "mailing_address")}
     ${editableField(prop, "mailing_city")}
     ${editableField(prop, "mailing_state")}
@@ -659,6 +678,7 @@ function drawerBodyHtml(prop, rec) {
       <h4>Contact Info</h4>
       ${contactOverridden ? `<span class="diff-badge inline">Data differs from master set<span class="revert-link" data-revert-contact="1">Revert</span></span>` : ""}
     </div>
+    ${contactGroupHtml(prop, "owner_contact", "Owner Contacts", "Add contact name…")}
     ${contactGroupHtml(prop, "phones", "Phone Numbers", "Add phone…")}
     ${contactGroupHtml(prop, "emails", "Emails", "Add email…")}
   </div>
@@ -728,6 +748,15 @@ function wireDrawerEvents(prop) {
     });
   });
 
+  document.getElementById("flag-toggle").addEventListener("click", () => {
+    rec.flagged = !rec.flagged;
+    saveCRM(prop.id);
+    openDrawer(prop.id);
+    renderMarkers();
+    renderList();
+    renderStats();
+  });
+
   document.getElementById("note-save").addEventListener("click", () => {
     const input = document.getElementById("note-input");
     const text = input.value.trim();
@@ -769,6 +798,7 @@ function wireDrawerEvents(prop) {
   document.querySelectorAll("[data-revert-contact]").forEach(el => {
     el.addEventListener("click", (e) => {
       e.stopPropagation();
+      delete rec.overrides.owner_contact;
       delete rec.overrides.phones;
       delete rec.overrides.emails;
       saveCRM(prop.id);
@@ -846,7 +876,7 @@ function clearMaturityPresetActive() {
 
 // ── wiring ───────────────────────────────────────────────────
 function initFilterBar() {
-  ["f-search", "f-state", "f-county", "f-type", "f-status", "f-loan-category", "f-has-contact", "f-overridden", "f-maturity-from", "f-maturity-to"].forEach(id => {
+  ["f-search", "f-state", "f-county", "f-type", "f-status", "f-loan-category", "f-has-contact", "f-overridden", "f-flagged", "f-maturity-from", "f-maturity-to"].forEach(id => {
     const el = document.getElementById(id);
     el.addEventListener(el.tagName === "INPUT" && el.type === "text" ? "input" : "change", () => {
       clearMaturityPresetActive();
@@ -880,6 +910,7 @@ function initFilterBar() {
     document.getElementById("f-loan-category").value = "";
     document.getElementById("f-has-contact").checked = false;
     document.getElementById("f-overridden").checked = false;
+    document.getElementById("f-flagged").checked = false;
     document.getElementById("f-maturity-from").value = "";
     document.getElementById("f-maturity-to").value = "";
     clearMaturityPresetActive();

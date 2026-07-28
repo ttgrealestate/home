@@ -121,6 +121,7 @@
   .status-not_contacted{background:var(--gray);}
   .status-needs_databasing{background:var(--amber);}
   .status-contacted{background:var(--green);}
+  .status-flagged{background:var(--red);}
 
   /* ── DETAIL DRAWER ───────────────────────────────── */
   #drawer{
@@ -190,6 +191,15 @@
   .loan-history-item span:last-child{text-align:right;}
 
   .tag-urgent{background:var(--red);color:var(--white);}
+  .tag-flagged{background:var(--red);color:var(--white);}
+
+  .flag-btn{
+    width:100%;margin-top:10px;padding:9px 6px;border-radius:4px;border:1.5px solid #d9d4c8;
+    background:var(--white);font-size:11px;font-weight:600;cursor:pointer;color:var(--mid);
+    text-align:center;letter-spacing:.02em;transition:all .12s;
+  }
+  .flag-btn:hover{border-color:var(--red);color:var(--red);}
+  .flag-btn.active{background:var(--red);border-color:var(--red);color:var(--white);}
   .tag-placeholder{background:var(--amber);color:var(--white);}
 
   .placeholder-banner{
@@ -316,6 +326,7 @@
   <div class="stat-pill"><b id="stat-contacted">–</b><span>Contacted</span></div>
   <div class="stat-pill"><b id="stat-needs">–</b><span>Needs DB</span></div>
   <div class="stat-pill"><b id="stat-overrides">–</b><span>Overridden</span></div>
+  <div class="stat-pill"><b id="stat-flagged">–</b><span>Flagged</span></div>
   <div class="topbar-spacer"></div>
   <div class="associate-field">
     <span>Logged in as</span>
@@ -373,6 +384,7 @@
   <div class="divider"></div>
   <label class="chk"><input type="checkbox" id="f-has-contact" /> Has phone/email</label>
   <label class="chk"><input type="checkbox" id="f-overridden" /> Overridden only</label>
+  <label class="chk"><input type="checkbox" id="f-flagged" /> Flagged only</label>
   <button class="clear-filters" id="clear-filters">Clear filters</button>
   <div class="filter-count"><b id="filter-count-n">0</b> matching</div>
 </div>
@@ -396,6 +408,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
-<script src="app.js?v=11"></script>
+<script src="app.js?v=12"></script>
 </body>
 </html>
