@@ -19,7 +19,7 @@
     --rule:rgba(184,157,106,0.25);
     --serif:'Cormorant Garamond',Georgia,serif;
     --sans:'Inter',system-ui,sans-serif;
-    --green:#3f8f5f; --amber:#c98a2c; --gray:#8a8f98; --red:#b5482f;
+    --green:#3f8f5f; --amber:#c98a2c; --gray:#8a8f98; --red:#b5482f; --blue:#3d6fb4;
   }
   html,body{height:100%;}
   body{font-family:var(--sans);font-size:13.5px;color:var(--navy);background:var(--ivory);overflow:hidden;}
@@ -66,6 +66,20 @@
   }
   #proto-banner.hidden{display:none;}
 
+  /* ── VIEW TABS ───────────────────────────────────── */
+  #view-tabs{background:var(--navy2);padding:0 18px;display:flex;gap:2px;border-bottom:1px solid var(--rule);}
+  .view-tab{
+    font-family:var(--sans);font-size:11.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+    padding:10px 18px;border:none;background:transparent;color:rgba(255,255,255,.55);cursor:pointer;
+    border-bottom:2px solid transparent;
+  }
+  .view-tab.active{color:var(--gold2);border-bottom-color:var(--gold);}
+  .view-tab:not(.active):hover{color:var(--white);}
+  .tab-badge{
+    display:inline-block;min-width:16px;padding:1px 5px;margin-left:5px;border-radius:8px;
+    background:var(--blue);color:#fff;font-size:9.5px;font-weight:700;text-align:center;
+  }
+
   /* ── FILTER BAR ──────────────────────────────────── */
   #filterbar{
     background:var(--white);border-bottom:1px solid #e4e0d8;padding:10px 18px;
@@ -99,8 +113,52 @@
   .filter-count b{color:var(--navy);}
 
   /* ── MAIN LAYOUT ─────────────────────────────────── */
-  #main{display:flex;height:calc(100vh - 56px - 34px - 47px);}
-  #main.no-banner{height:calc(100vh - 56px - 47px);}
+  #main{display:flex;height:calc(100vh - 56px - 34px - 47px - 41px);}
+  #main.no-banner{height:calc(100vh - 56px - 47px - 41px);}
+  #main.hidden{display:none;}
+
+  /* ── CALLING LIST VIEW ───────────────────────────── */
+  #calling-list-view{display:none;flex-direction:column;height:calc(100vh - 56px - 34px - 47px - 41px);}
+  #calling-list-view.no-banner{height:calc(100vh - 56px - 47px - 41px);}
+  #calling-list-view.visible{display:flex;}
+
+  #calling-toolbar{
+    padding:12px 18px;background:var(--white);border-bottom:1px solid #e4e0d8;
+    display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+  }
+  .calling-subfilter{display:flex;gap:6px;}
+  .sub-filter-btn{
+    font-family:var(--sans);font-size:11px;font-weight:600;color:var(--mid);
+    background:var(--white);border:1px solid #d9d4c8;border-radius:3px;padding:7px 14px;cursor:pointer;
+  }
+  .sub-filter-btn:hover{border-color:var(--gold);color:var(--navy);}
+  .sub-filter-btn.active{background:var(--navy);border-color:var(--navy);color:var(--white);}
+  .calling-count{font-size:11.5px;color:var(--mid);}
+  .calling-count b{color:var(--navy);font-size:14px;font-family:var(--serif);}
+
+  #calling-table-wrap{flex:1;overflow:auto;background:var(--white);}
+  #calling-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  #calling-table thead th{
+    position:sticky;top:0;background:var(--ivory);text-align:left;padding:10px 14px;
+    font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--mid);font-weight:700;
+    border-bottom:1px solid #e4e0d8;z-index:1;
+  }
+  #calling-table tbody td{padding:10px 14px;border-bottom:1px solid #f0ede5;vertical-align:top;}
+  #calling-table tbody tr{cursor:pointer;transition:background .12s;}
+  #calling-table tbody tr:hover{background:var(--ivory);}
+  #calling-table tbody tr.active{background:#f2ead8;}
+  .calling-addr{font-weight:600;color:var(--navy);}
+  .calling-sub{font-size:10.5px;color:var(--mid);margin-top:2px;}
+  .claim-btn{
+    font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:6px 10px;
+    border-radius:3px;border:1px solid var(--gold);background:var(--white);color:var(--gold);cursor:pointer;
+    white-space:nowrap;
+  }
+  .claim-btn:hover{background:var(--gold);color:var(--white);}
+  .claimed-mine{font-size:10.5px;font-weight:700;color:var(--green);white-space:nowrap;}
+  .claimed-other{font-size:10.5px;color:var(--mid);white-space:nowrap;}
+  .release-link{font-size:9.5px;color:var(--red);text-decoration:underline;cursor:pointer;margin-left:6px;}
+  .calling-empty{padding:60px 24px;text-align:center;color:var(--mid);font-size:13px;line-height:1.6;}
 
   #listpane{width:380px;min-width:380px;background:var(--white);border-right:1px solid #e4e0d8;overflow-y:auto;}
   #maparea{flex:1;position:relative;}
@@ -120,6 +178,7 @@
   /* status colors used both in list dots and map markers */
   .status-not_contacted{background:var(--gray);}
   .status-needs_databasing{background:var(--amber);}
+  .status-ready_to_dial{background:var(--blue);}
   .status-contacted{background:var(--green);}
   .status-flagged{background:var(--red);}
 
@@ -151,15 +210,16 @@
   .diff-badge.inline{margin-top:0;white-space:nowrap;}
   .revert-link{font-size:9.5px;color:var(--gold);text-decoration:underline;cursor:pointer;margin-left:6px;text-transform:none;letter-spacing:0;}
 
-  .status-buttons{display:flex;gap:8px;}
+  .status-buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
   .status-btn{
-    flex:1;padding:9px 6px;border-radius:4px;border:1.5px solid #d9d4c8;background:var(--white);
+    padding:9px 6px;border-radius:4px;border:1.5px solid #d9d4c8;background:var(--white);
     font-size:11px;font-weight:600;cursor:pointer;color:var(--mid);text-align:center;letter-spacing:.02em;
     transition:all .12s;
   }
   .status-btn:hover{border-color:var(--gold);}
   .status-btn.active[data-status="contacted"]{background:var(--green);border-color:var(--green);color:var(--white);}
   .status-btn.active[data-status="needs_databasing"]{background:var(--amber);border-color:var(--amber);color:var(--white);}
+  .status-btn.active[data-status="ready_to_dial"]{background:var(--blue);border-color:var(--blue);color:var(--white);}
   .status-btn.active[data-status="not_contacted"]{background:var(--gray);border-color:var(--gray);color:var(--white);}
 
   .notes-list{margin-top:12px;display:flex;flex-direction:column;gap:8px;max-height:220px;overflow-y:auto;}
@@ -341,6 +401,11 @@
   <button id="dismiss-banner">Dismiss</button>
 </div>
 
+<div id="view-tabs">
+  <button class="view-tab active" data-view="map" type="button">Map View</button>
+  <button class="view-tab" data-view="calling" type="button">Calling List<span class="tab-badge" id="calling-badge">0</span></button>
+</div>
+
 <div id="filterbar">
   <input type="text" id="f-search" placeholder="Search owner, address, or APN…" />
   <select id="f-county">
@@ -356,6 +421,7 @@
     <option value="">Any CRM Status</option>
     <option value="not_contacted">Not Contacted</option>
     <option value="needs_databasing">Needs Databasing</option>
+    <option value="ready_to_dial">Ready to Dial</option>
     <option value="contacted">Contacted</option>
   </select>
   <select id="f-state">
@@ -394,6 +460,32 @@
   <div id="maparea"><div id="map"></div></div>
 </div>
 
+<div id="calling-list-view">
+  <div id="calling-toolbar">
+    <div class="calling-subfilter">
+      <button class="sub-filter-btn active" data-scope="all" type="button">All Ready to Dial</button>
+      <button class="sub-filter-btn" data-scope="unclaimed" type="button">Unclaimed</button>
+      <button class="sub-filter-btn" data-scope="mine" type="button">My List</button>
+    </div>
+    <div class="calling-count"><b id="calling-count-n">0</b> in queue</div>
+  </div>
+  <div id="calling-table-wrap">
+    <table id="calling-table">
+      <thead>
+        <tr>
+          <th>Claim</th>
+          <th>Address</th>
+          <th>Units</th>
+          <th>Owner First Name</th>
+          <th>Phone Numbers</th>
+          <th>Emails</th>
+        </tr>
+      </thead>
+      <tbody id="calling-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
 <div id="overlay"></div>
 <div id="drawer">
   <div id="drawer-header">
@@ -408,6 +500,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
-<script src="app.js?v=12"></script>
+<script src="app.js?v=13"></script>
 </body>
 </html>

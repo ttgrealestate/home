@@ -115,6 +115,8 @@ let filtered = [];
 let activeId = null;
 let markerLayer = null;
 let markerIndex = {};        // id -> marker
+let currentView = "map";     // "map" | "calling"
+let callingScope = "all";    // "all" | "unclaimed" | "mine" — sub-filter within the Calling List view
 
 // ── persistence ──────────────────────────────────────────────
 // CRM state (status/notes/overrides) lives in Firestore, one document per property id, gated
@@ -204,6 +206,7 @@ function setContactEntries(prop, field, entries) {
   openDrawer(prop.id);
   renderList();
   renderStats();
+  if (currentView === "calling") renderCallingList();
 }
 function propertyType(prop) {
   const u = prop.units;
@@ -224,7 +227,7 @@ function propertyTypeLabel(prop) {
   return "Multifamily";
 }
 function statusLabel(s) {
-  return { not_contacted: "Not Contacted", needs_databasing: "Needs Databasing", contacted: "Contacted" }[s] || "Not Contacted";
+  return { not_contacted: "Not Contacted", needs_databasing: "Needs Databasing", ready_to_dial: "Ready to Dial", contacted: "Contacted" }[s] || "Not Contacted";
 }
 function fmtMoney(v) {
   if (!v) return "—";
@@ -329,7 +332,7 @@ function initMap() {
 }
 
 function statusColor(status) {
-  return { not_contacted: "#8a8f98", needs_databasing: "#c98a2c", contacted: "#3f8f5f" }[status] || "#8a8f98";
+  return { not_contacted: "#8a8f98", needs_databasing: "#c98a2c", ready_to_dial: "#3d6fb4", contacted: "#3f8f5f" }[status] || "#8a8f98";
 }
 
 // a flag (loan/property info wrong) always shows red, overriding whatever the contact status is
@@ -451,6 +454,7 @@ function applyFilters() {
   renderMarkers();
   renderStats();
   document.getElementById("filter-count-n").textContent = filtered.length.toLocaleString();
+  if (currentView === "calling") renderCallingList();
 }
 
 // ── list rendering ───────────────────────────────────────────
@@ -532,6 +536,118 @@ function renderStats() {
   document.getElementById("stat-needs").textContent = needs.toLocaleString();
   document.getElementById("stat-overrides").textContent = overridden.toLocaleString();
   document.getElementById("stat-flagged").textContent = flagged.toLocaleString();
+
+  const readyToDial = PROPERTIES.reduce((n, p) => n + (getRecord(p.id).status === "ready_to_dial" ? 1 : 0), 0);
+  document.getElementById("calling-badge").textContent = readyToDial.toLocaleString();
+}
+
+// ── calling list view ──────────────────────────────────────────
+// Databasers mark a property "Ready to Dial" once research is done but no one has called yet;
+// this view turns that into an actual worklist associates can claim rows from and dial down.
+function switchView(view) {
+  currentView = view;
+  document.querySelectorAll(".view-tab").forEach(t => t.classList.toggle("active", t.dataset.view === view));
+  document.getElementById("main").classList.toggle("hidden", view !== "map");
+  document.getElementById("calling-list-view").classList.toggle("visible", view === "calling");
+  if (view === "map" && window.TTG_MAP) {
+    // the map's container was display:none — Leaflet needs a nudge to redraw correctly
+    setTimeout(() => window.TTG_MAP.invalidateSize(), 50);
+  }
+  if (view === "calling") renderCallingList();
+}
+
+function ownerFirstName(prop) {
+  if (prop.first_name) return prop.first_name;
+  const name = effectiveValue(prop, "adjusted_owner") || effectiveValue(prop, "owner") || "";
+  return name.trim().split(/\s+/)[0] || "";
+}
+
+function renderCallingList() {
+  document.getElementById("calling-table-wrap").innerHTML = `
+    <table id="calling-table">
+      <thead>
+        <tr><th>Claim</th><th>Address</th><th>Units</th><th>Owner First Name</th><th>Phone Numbers</th><th>Emails</th></tr>
+      </thead>
+      <tbody id="calling-tbody"></tbody>
+    </table>`;
+
+  const readyProps = filtered.filter(p => getRecord(p.id).status === "ready_to_dial");
+  let scoped = readyProps;
+  if (callingScope === "unclaimed") {
+    scoped = readyProps.filter(p => !getRecord(p.id).claimed_by);
+  } else if (callingScope === "mine") {
+    const me = CURRENT_USER && CURRENT_USER.email;
+    scoped = readyProps.filter(p => getRecord(p.id).claimed_by === me);
+  }
+
+  document.getElementById("calling-count-n").textContent = scoped.length.toLocaleString();
+
+  if (scoped.length === 0) {
+    document.getElementById("calling-table-wrap").innerHTML =
+      `<div class="calling-empty">No properties in this queue.<br>Mark properties "Ready to Dial" from their detail panel to add them here.</div>`;
+    return;
+  }
+
+  const body = document.getElementById("calling-tbody");
+  body.innerHTML = scoped.map(callingRowHtml).join("");
+  body.querySelectorAll("tr[data-id]").forEach(tr => {
+    tr.addEventListener("click", (e) => {
+      if (e.target.closest("[data-claim],[data-release]")) return;
+      openDrawer(tr.dataset.id);
+    });
+  });
+  body.querySelectorAll("[data-claim]").forEach(el => {
+    el.addEventListener("click", (e) => { e.stopPropagation(); claimProperty(el.dataset.claim); });
+  });
+  body.querySelectorAll("[data-release]").forEach(el => {
+    el.addEventListener("click", (e) => { e.stopPropagation(); releaseProperty(el.dataset.release); });
+  });
+}
+
+function callingRowHtml(prop) {
+  const rec = getRecord(prop.id);
+  const phones = getContactEntries(prop, "phones").map(e => e.value).join(", ") || "—";
+  const emails = getContactEntries(prop, "emails").map(e => e.value).join(", ") || "—";
+  const addr = fullAddress(prop);
+  const place = prop.county ? prop.county + " Co." : (prop.state || "");
+  const me = CURRENT_USER && CURRENT_USER.email;
+
+  let claimCell;
+  if (!rec.claimed_by) {
+    claimCell = `<button class="claim-btn" data-claim="${escapeHtml(prop.id)}" type="button">Claim</button>`;
+  } else if (rec.claimed_by === me) {
+    claimCell = `<span class="claimed-mine">Claimed by you</span><span class="release-link" data-release="${escapeHtml(prop.id)}">Release</span>`;
+  } else {
+    claimCell = `<span class="claimed-other">${escapeHtml(rec.claimed_by_name || rec.claimed_by)}</span><span class="release-link" data-release="${escapeHtml(prop.id)}">Release</span>`;
+  }
+
+  return `
+  <tr data-id="${escapeHtml(prop.id)}" class="${prop.id === activeId ? "active" : ""}">
+    <td>${claimCell}</td>
+    <td><div class="calling-addr">${escapeHtml(addr || "Address unknown")}</div><div class="calling-sub">${escapeHtml(place)}</div></td>
+    <td>${prop.units || "—"}</td>
+    <td>${escapeHtml(ownerFirstName(prop)) || "—"}</td>
+    <td>${escapeHtml(phones)}</td>
+    <td>${escapeHtml(emails)}</td>
+  </tr>`;
+}
+
+function claimProperty(id) {
+  const rec = getRecord(id);
+  rec.claimed_by = CURRENT_USER ? CURRENT_USER.email : null;
+  rec.claimed_by_name = CURRENT_USER ? CURRENT_USER.name : null;
+  rec.claimed_at = Date.now();
+  saveCRM(id);
+  renderCallingList();
+}
+
+function releaseProperty(id) {
+  const rec = getRecord(id);
+  delete rec.claimed_by;
+  delete rec.claimed_by_name;
+  delete rec.claimed_at;
+  saveCRM(id);
+  renderCallingList();
 }
 
 // ── drawer / CRM detail ──────────────────────────────────────
@@ -630,6 +746,7 @@ function drawerBodyHtml(prop, rec) {
     <div class="status-buttons">
       <button class="status-btn${rec.status === "not_contacted" ? " active" : ""}" data-status="not_contacted">Not Contacted</button>
       <button class="status-btn${rec.status === "needs_databasing" ? " active" : ""}" data-status="needs_databasing">Needs Databasing</button>
+      <button class="status-btn${rec.status === "ready_to_dial" ? " active" : ""}" data-status="ready_to_dial">Ready to Dial</button>
       <button class="status-btn${rec.status === "contacted" ? " active" : ""}" data-status="contacted">Contacted</button>
     </div>
     <button class="flag-btn${rec.flagged ? " active" : ""}" id="flag-toggle" type="button">
@@ -743,8 +860,10 @@ function wireDrawerEvents(prop) {
       rec.status = btn.dataset.status;
       saveCRM(prop.id);
       openDrawer(prop.id);
+      renderList();
       renderMarkers();
       renderStats();
+      if (currentView === "calling") renderCallingList();
     });
   });
 
@@ -777,6 +896,7 @@ function wireDrawerEvents(prop) {
       openDrawer(prop.id);
       renderList();
       renderStats();
+      if (currentView === "calling") renderCallingList();
     });
   });
 
@@ -805,6 +925,7 @@ function wireDrawerEvents(prop) {
       openDrawer(prop.id);
       renderList();
       renderStats();
+      if (currentView === "calling") renderCallingList();
     });
   });
 }
@@ -861,6 +982,7 @@ function startEdit(prop, field) {
     renderList();
     renderMarkers();
     renderStats();
+    if (currentView === "calling") renderCallingList();
   }
 
   input.addEventListener("blur", commit);
@@ -922,5 +1044,18 @@ function initFilterBar() {
   document.getElementById("dismiss-banner").addEventListener("click", () => {
     document.getElementById("proto-banner").classList.add("hidden");
     document.getElementById("main").classList.add("no-banner");
+    document.getElementById("calling-list-view").classList.add("no-banner");
+  });
+
+  document.querySelectorAll(".view-tab").forEach(tab => {
+    tab.addEventListener("click", () => switchView(tab.dataset.view));
+  });
+  document.querySelectorAll(".sub-filter-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      callingScope = btn.dataset.scope;
+      document.querySelectorAll(".sub-filter-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      renderCallingList();
+    });
   });
 }
