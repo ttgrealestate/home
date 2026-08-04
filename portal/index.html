@@ -206,9 +206,10 @@
   .d-field .v input{width:100%;text-align:right;font-size:12.5px;padding:4px 6px;border:1px solid var(--gold);border-radius:3px;font-family:var(--sans);}
   .edit-pencil{cursor:pointer;color:var(--mid);font-size:11px;margin-left:6px;flex-shrink:0;}
   .edit-pencil:hover{color:var(--gold);}
-  .diff-badge{display:block;font-size:9.5px;color:var(--red);text-align:right;margin-top:2px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;}
-  .diff-badge.inline{margin-top:0;white-space:nowrap;}
-  .revert-link{font-size:9.5px;color:var(--gold);text-decoration:underline;cursor:pointer;margin-left:6px;text-transform:none;letter-spacing:0;}
+  /* an edited field's value gets a subtle gold dotted underline instead of a repeated text
+     badge — the one-time "Edited" banner at the top of the drawer covers the explanation */
+  .v-display.overridden{border-bottom:1px dotted var(--gold);cursor:help;}
+  .field-revert{font-size:9.5px;color:var(--gold);text-decoration:underline;cursor:pointer;margin-left:6px;white-space:nowrap;}
 
   .status-buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
   .status-btn{
@@ -536,6 +537,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
-<script src="app.js?v=14"></script>
+<script src="app.js?v=15"></script>
 </body>
 </html>

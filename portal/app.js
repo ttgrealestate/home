@@ -217,7 +217,13 @@ function getContactEntries(prop, field) {
 }
 function setContactEntries(prop, field, entries) {
   const rec = getRecord(prop.id);
-  rec.overrides[field] = entries;
+  // an empty list isn't a meaningful override — clear it rather than leaving a phantom
+  // entry that would keep flagging this record as "edited" with nothing to show for it
+  if (entries.length === 0) {
+    delete rec.overrides[field];
+  } else {
+    rec.overrides[field] = entries;
+  }
   saveCRM(prop.id);
   openDrawer(prop.id);
   renderList();
@@ -744,8 +750,8 @@ function editableField(prop, field) {
   <div class="d-field" data-field="${field}">
     <div class="k">${FIELD_LABELS[field]}</div>
     <div class="v-wrap" style="flex:1;text-align:right;">
-      <span class="v-display">${escapeHtml(display)}<span class="edit-pencil" data-edit="${field}">&#9998;</span></span>
-      ${overridden ? `<span class="diff-badge">Data differs from master set<span class="revert-link" data-revert="${field}">Revert</span></span>` : ""}
+      <span class="v-display${overridden ? " overridden" : ""}" title="${overridden ? "Edited — differs from the master data set" : ""}">${escapeHtml(display)}<span class="edit-pencil" data-edit="${field}">&#9998;</span></span>
+      ${overridden ? `<span class="field-revert" data-revert="${field}">Revert</span>` : ""}
     </div>
   </div>`;
 }
@@ -796,12 +802,18 @@ function contactGroupHtml(prop, field, label, placeholder) {
 
 function drawerBodyHtml(prop, rec) {
   const contactOverridden = isOverridden(prop, "owner_contact") || isOverridden(prop, "phones") || isOverridden(prop, "emails");
+  const hasAnyOverride = !!(rec.overrides && Object.keys(rec.overrides).length > 0);
 
   return `
   ${prop.is_placeholder ? `
   <div class="placeholder-banner">
     <strong>No property record yet</strong> — this entry was created from a loan record with no matching
     assessor data. Fill in ownership, contact, and property details below as you research it.
+  </div>` : ""}
+
+  ${hasAnyOverride ? `
+  <div class="placeholder-banner">
+    <strong>Edited</strong> — one or more fields on this record have been changed and differ from the master data set.
   </div>` : ""}
 
   <div class="d-section">
@@ -861,7 +873,7 @@ function drawerBodyHtml(prop, rec) {
   <div class="d-section">
     <div class="d-section-head">
       <h4>Contact Info</h4>
-      ${contactOverridden ? `<span class="diff-badge inline">Data differs from master set<span class="revert-link" data-revert-contact="1">Revert</span></span>` : ""}
+      ${contactOverridden ? `<span class="field-revert" data-revert-contact="1">Revert edits</span>` : ""}
     </div>
     ${contactGroupHtml(prop, "owner_contact", "Owner Contacts", "Add contact name…")}
     ${contactGroupHtml(prop, "phones", "Phone Numbers", "Add phone…")}
