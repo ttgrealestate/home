@@ -115,8 +115,9 @@ let filtered = [];
 let activeId = null;
 let markerLayer = null;
 let markerIndex = {};        // id -> marker
-let currentView = "map";     // "map" | "calling"
+let currentView = "map";     // "map" | "calling" | "leads"
 let callingScope = "all";    // "all" | "unclaimed" | "mine" — sub-filter within the Calling List view
+let leadsScope = "all";      // "all" | "unclaimed" | "mine" — sub-filter within the Leads view
 
 // ── persistence ──────────────────────────────────────────────
 // CRM state (status/notes/overrides) lives in Firestore, one document per property id, gated
@@ -192,12 +193,27 @@ function isOverridden(prop, field) {
 // the simple single-value overrides used for other fields. Master data for phones/emails is
 // already an array of plain strings; owner_contact's master value is a single string (or empty),
 // so it's normalized into a one-item list here too. Master values always start with color: null.
+//
+// Owner contact entries additionally carry a stable `id`, derived deterministically from their
+// text (not random) so it survives re-renders and the master-data/override fallback switch
+// without needing migration bookkeeping. Phone/email entries reference that id via `ownerId` to
+// record which owner contact a given number/address belongs to.
+function ownerContactId(value) {
+  return "oc-" + String(value).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
 function getContactEntries(prop, field) {
   const rec = CRM[prop.id];
-  if (rec && rec.overrides && rec.overrides[field]) return rec.overrides[field];
-  const raw = prop[field];
-  if (Array.isArray(raw)) return raw.map(v => ({ value: v, color: null }));
-  return raw ? [{ value: raw, color: null }] : [];
+  let entries;
+  if (rec && rec.overrides && rec.overrides[field]) {
+    entries = rec.overrides[field];
+  } else {
+    const raw = prop[field];
+    entries = Array.isArray(raw) ? raw.map(v => ({ value: v, color: null })) : (raw ? [{ value: raw, color: null }] : []);
+  }
+  if (field === "owner_contact") {
+    entries = entries.map(e => e.id ? e : { ...e, id: ownerContactId(e.value) });
+  }
+  return entries;
 }
 function setContactEntries(prop, field, entries) {
   const rec = getRecord(prop.id);
@@ -206,7 +222,7 @@ function setContactEntries(prop, field, entries) {
   openDrawer(prop.id);
   renderList();
   renderStats();
-  if (currentView === "calling") renderCallingList();
+  refreshActiveQueueView();
 }
 function propertyType(prop) {
   const u = prop.units;
@@ -454,7 +470,7 @@ function applyFilters() {
   renderMarkers();
   renderStats();
   document.getElementById("filter-count-n").textContent = filtered.length.toLocaleString();
-  if (currentView === "calling") renderCallingList();
+  refreshActiveQueueView();
 }
 
 // ── list rendering ───────────────────────────────────────────
@@ -497,6 +513,7 @@ function rowHtml(prop) {
           <span>${prop.units || "?"} units</span>
           <span>${escapeHtml(place)}</span>
           ${rec.flagged ? '<span class="tag tag-flagged">Flagged</span>' : ""}
+          ${rec.isLead ? '<span class="tag tag-lead">Lead</span>' : ""}
           ${prop.is_placeholder ? '<span class="tag tag-placeholder">Needs Property Info</span>' : ""}
           ${overridden ? '<span class="tag">Edited</span>' : ""}
           ${loanTagHtml(prop)}
@@ -539,21 +556,32 @@ function renderStats() {
 
   const readyToDial = PROPERTIES.reduce((n, p) => n + (getRecord(p.id).status === "ready_to_dial" ? 1 : 0), 0);
   document.getElementById("calling-badge").textContent = readyToDial.toLocaleString();
+
+  const leadsCount = PROPERTIES.reduce((n, p) => n + (getRecord(p.id).isLead ? 1 : 0), 0);
+  document.getElementById("leads-badge").textContent = leadsCount.toLocaleString();
 }
 
-// ── calling list view ──────────────────────────────────────────
+// ── calling list / leads views ──────────────────────────────────
 // Databasers mark a property "Ready to Dial" once research is done but no one has called yet;
-// this view turns that into an actual worklist associates can claim rows from and dial down.
+// the Calling List turns that into an actual worklist associates can claim rows from and dial
+// down. Leads works the same way but banks properties from a positive conversation instead —
+// same table shape, same claim mechanism, different membership test (isLead vs. status).
 function switchView(view) {
   currentView = view;
   document.querySelectorAll(".view-tab").forEach(t => t.classList.toggle("active", t.dataset.view === view));
   document.getElementById("main").classList.toggle("hidden", view !== "map");
   document.getElementById("calling-list-view").classList.toggle("visible", view === "calling");
+  document.getElementById("leads-view").classList.toggle("visible", view === "leads");
   if (view === "map" && window.TTG_MAP) {
     // the map's container was display:none — Leaflet needs a nudge to redraw correctly
     setTimeout(() => window.TTG_MAP.invalidateSize(), 50);
   }
-  if (view === "calling") renderCallingList();
+  refreshActiveQueueView();
+}
+
+function refreshActiveQueueView() {
+  if (currentView === "calling") renderCallingList();
+  if (currentView === "leads") renderLeadsList();
 }
 
 function ownerFirstName(prop) {
@@ -563,32 +591,55 @@ function ownerFirstName(prop) {
 }
 
 function renderCallingList() {
-  document.getElementById("calling-table-wrap").innerHTML = `
-    <table id="calling-table">
+  renderQueueTable({
+    wrapId: "calling-table-wrap",
+    tbodyId: "calling-tbody",
+    countId: "calling-count-n",
+    scope: callingScope,
+    props: filtered.filter(p => getRecord(p.id).status === "ready_to_dial"),
+    emptyMessage: `No properties in this queue.<br>Mark properties "Ready to Dial" from their detail panel to add them here.`
+  });
+}
+
+function renderLeadsList() {
+  renderQueueTable({
+    wrapId: "leads-table-wrap",
+    tbodyId: "leads-tbody",
+    countId: "leads-count-n",
+    scope: leadsScope,
+    props: filtered.filter(p => getRecord(p.id).isLead),
+    emptyMessage: `No leads banked yet.<br>Mark a property "Lead" from its detail panel after a positive conversation to add it here.`
+  });
+}
+
+// shared table renderer for the Calling List and Leads views — same columns, same claim
+// mechanism, different membership test (passed in via `props`)
+function renderQueueTable({ wrapId, tbodyId, countId, scope, props, emptyMessage }) {
+  const wrap = document.getElementById(wrapId);
+  wrap.innerHTML = `
+    <table class="queue-table">
       <thead>
         <tr><th>Claim</th><th>Address</th><th>Units</th><th>Owner First Name</th><th>Phone Numbers</th><th>Emails</th></tr>
       </thead>
-      <tbody id="calling-tbody"></tbody>
+      <tbody id="${tbodyId}"></tbody>
     </table>`;
 
-  const readyProps = filtered.filter(p => getRecord(p.id).status === "ready_to_dial");
-  let scoped = readyProps;
-  if (callingScope === "unclaimed") {
-    scoped = readyProps.filter(p => !getRecord(p.id).claimed_by);
-  } else if (callingScope === "mine") {
+  let scoped = props;
+  if (scope === "unclaimed") {
+    scoped = props.filter(p => !getRecord(p.id).claimed_by);
+  } else if (scope === "mine") {
     const me = CURRENT_USER && CURRENT_USER.email;
-    scoped = readyProps.filter(p => getRecord(p.id).claimed_by === me);
+    scoped = props.filter(p => getRecord(p.id).claimed_by === me);
   }
 
-  document.getElementById("calling-count-n").textContent = scoped.length.toLocaleString();
+  document.getElementById(countId).textContent = scoped.length.toLocaleString();
 
   if (scoped.length === 0) {
-    document.getElementById("calling-table-wrap").innerHTML =
-      `<div class="calling-empty">No properties in this queue.<br>Mark properties "Ready to Dial" from their detail panel to add them here.</div>`;
+    wrap.innerHTML = `<div class="calling-empty">${emptyMessage}</div>`;
     return;
   }
 
-  const body = document.getElementById("calling-tbody");
+  const body = document.getElementById(tbodyId);
   body.innerHTML = scoped.map(callingRowHtml).join("");
   body.querySelectorAll("tr[data-id]").forEach(tr => {
     tr.addEventListener("click", (e) => {
@@ -638,7 +689,7 @@ function claimProperty(id) {
   rec.claimed_by_name = CURRENT_USER ? CURRENT_USER.name : null;
   rec.claimed_at = Date.now();
   saveCRM(id);
-  renderCallingList();
+  refreshActiveQueueView();
 }
 
 function releaseProperty(id) {
@@ -647,7 +698,7 @@ function releaseProperty(id) {
   delete rec.claimed_by_name;
   delete rec.claimed_at;
   saveCRM(id);
-  renderCallingList();
+  refreshActiveQueueView();
 }
 
 // ── drawer / CRM detail ──────────────────────────────────────
@@ -699,7 +750,7 @@ function editableField(prop, field) {
   </div>`;
 }
 
-function contactEntryHtml(field, entry, idx) {
+function contactEntryHtml(prop, field, entry, idx) {
   const dotClass = entry.color ? `dot-${entry.color}` : "dot-none";
   const valClass = entry.color ? `tagged-${entry.color}` : "";
   // only phones/emails are meaningfully clickable (tel:/mailto:); owner contact names are plain text
@@ -708,10 +759,22 @@ function contactEntryHtml(field, entry, idx) {
     : field === "emails"
       ? `<a href="mailto:${encodeURIComponent(entry.value)}" class="contact-value ${valClass}">${escapeHtml(entry.value)}</a>`
       : `<span class="contact-value ${valClass}">${escapeHtml(entry.value)}</span>`;
+
+  // phones/emails can be pinned to a specific owner contact so associates know whose number they're calling
+  let ownerSelectHtml = "";
+  if (field === "phones" || field === "emails") {
+    const owners = getContactEntries(prop, "owner_contact");
+    const options = [`<option value="">Unassigned</option>`].concat(
+      owners.map(o => `<option value="${escapeHtml(o.id)}"${entry.ownerId === o.id ? " selected" : ""}>${escapeHtml(o.value)}</option>`)
+    );
+    ownerSelectHtml = `<select class="owner-assign-select" data-field="${field}" data-idx="${idx}" title="Which owner contact does this belong to?">${options.join("")}</select>`;
+  }
+
   return `
   <div class="contact-entry" data-field="${field}" data-idx="${idx}">
     <span class="color-dot ${dotClass}" data-cycle-color title="Click to tag: none → green → yellow → red"></span>
     ${valueHtml}
+    ${ownerSelectHtml}
     <span class="contact-remove" data-remove-entry title="Remove">&times;</span>
   </div>`;
 }
@@ -722,7 +785,7 @@ function contactGroupHtml(prop, field, label, placeholder) {
   <div class="contact-group">
     <div class="contact-group-label">${label}</div>
     <div class="contact-entries">
-      ${entries.length ? entries.map((e, i) => contactEntryHtml(field, e, i)).join("") : `<div class="contact-empty">None on file</div>`}
+      ${entries.length ? entries.map((e, i) => contactEntryHtml(prop, field, e, i)).join("") : `<div class="contact-empty">None on file</div>`}
     </div>
     <div class="contact-add-row">
       <input type="text" class="contact-add-input" data-add-field="${field}" placeholder="${placeholder}" />
@@ -749,9 +812,14 @@ function drawerBodyHtml(prop, rec) {
       <button class="status-btn${rec.status === "ready_to_dial" ? " active" : ""}" data-status="ready_to_dial">Ready to Dial</button>
       <button class="status-btn${rec.status === "contacted" ? " active" : ""}" data-status="contacted">Contacted</button>
     </div>
-    <button class="flag-btn${rec.flagged ? " active" : ""}" id="flag-toggle" type="button">
-      ${rec.flagged ? "⚑ Flagged — Loan/Property Info Incorrect" : "⚑ Flag Loan/Property Info as Incorrect"}
-    </button>
+    <div class="marker-buttons">
+      <button class="flag-btn${rec.flagged ? " active" : ""}" id="flag-toggle" type="button">
+        ${rec.flagged ? "⚑ Flagged — Info Incorrect" : "⚑ Flag Info as Incorrect"}
+      </button>
+      <button class="lead-btn${rec.isLead ? " active" : ""}" id="lead-toggle" type="button">
+        ${rec.isLead ? "★ Lead — Positive Conversation" : "★ Mark as Lead"}
+      </button>
+    </div>
   </div>
 
   <div class="d-section">
@@ -863,7 +931,7 @@ function wireDrawerEvents(prop) {
       renderList();
       renderMarkers();
       renderStats();
-      if (currentView === "calling") renderCallingList();
+      refreshActiveQueueView();
     });
   });
 
@@ -874,6 +942,15 @@ function wireDrawerEvents(prop) {
     renderMarkers();
     renderList();
     renderStats();
+  });
+
+  document.getElementById("lead-toggle").addEventListener("click", () => {
+    rec.isLead = !rec.isLead;
+    saveCRM(prop.id);
+    openDrawer(prop.id);
+    renderList();
+    renderStats();
+    refreshActiveQueueView();
   });
 
   document.getElementById("note-save").addEventListener("click", () => {
@@ -896,7 +973,7 @@ function wireDrawerEvents(prop) {
       openDrawer(prop.id);
       renderList();
       renderStats();
-      if (currentView === "calling") renderCallingList();
+      refreshActiveQueueView();
     });
   });
 
@@ -915,6 +992,15 @@ function wireDrawerEvents(prop) {
   document.querySelectorAll("[data-remove-entry]").forEach(el => {
     el.addEventListener("click", () => removeContactEntry(prop, el.closest(".contact-entry")));
   });
+  document.querySelectorAll(".owner-assign-select").forEach(sel => {
+    sel.addEventListener("change", () => {
+      const field = sel.dataset.field;
+      const idx = parseInt(sel.dataset.idx, 10);
+      const entries = getContactEntries(prop, field).map(e => ({ ...e }));
+      entries[idx].ownerId = sel.value || null;
+      setContactEntries(prop, field, entries);
+    });
+  });
   document.querySelectorAll("[data-revert-contact]").forEach(el => {
     el.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -925,7 +1011,7 @@ function wireDrawerEvents(prop) {
       openDrawer(prop.id);
       renderList();
       renderStats();
-      if (currentView === "calling") renderCallingList();
+      refreshActiveQueueView();
     });
   });
 }
@@ -935,7 +1021,9 @@ function addContactEntry(prop, field) {
   const val = input.value.trim();
   if (!val) return;
   const entries = getContactEntries(prop, field).slice();
-  entries.push({ value: val, color: null });
+  const newEntry = { value: val, color: null };
+  if (field === "owner_contact") newEntry.id = ownerContactId(val);
+  entries.push(newEntry);
   setContactEntries(prop, field, entries);
 }
 
@@ -982,7 +1070,7 @@ function startEdit(prop, field) {
     renderList();
     renderMarkers();
     renderStats();
-    if (currentView === "calling") renderCallingList();
+    refreshActiveQueueView();
   }
 
   input.addEventListener("blur", commit);
@@ -1044,18 +1132,29 @@ function initFilterBar() {
   document.getElementById("dismiss-banner").addEventListener("click", () => {
     document.getElementById("proto-banner").classList.add("hidden");
     document.getElementById("main").classList.add("no-banner");
-    document.getElementById("calling-list-view").classList.add("no-banner");
+    document.querySelectorAll(".queue-view").forEach(el => el.classList.add("no-banner"));
   });
 
   document.querySelectorAll(".view-tab").forEach(tab => {
     tab.addEventListener("click", () => switchView(tab.dataset.view));
   });
-  document.querySelectorAll(".sub-filter-btn").forEach(btn => {
+
+  // sub-filter buttons (All/Unclaimed/Mine) are scoped per view — Calling List and Leads
+  // each keep their own independent scope and active state
+  document.querySelectorAll("#calling-list-view .sub-filter-btn").forEach(btn => {
     btn.addEventListener("click", () => {
       callingScope = btn.dataset.scope;
-      document.querySelectorAll(".sub-filter-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll("#calling-list-view .sub-filter-btn").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       renderCallingList();
+    });
+  });
+  document.querySelectorAll("#leads-view .sub-filter-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      leadsScope = btn.dataset.scope;
+      document.querySelectorAll("#leads-view .sub-filter-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      renderLeadsList();
     });
   });
 }

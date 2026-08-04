@@ -117,12 +117,12 @@
   #main.no-banner{height:calc(100vh - 56px - 47px - 41px);}
   #main.hidden{display:none;}
 
-  /* ── CALLING LIST VIEW ───────────────────────────── */
-  #calling-list-view{display:none;flex-direction:column;height:calc(100vh - 56px - 34px - 47px - 41px);}
-  #calling-list-view.no-banner{height:calc(100vh - 56px - 47px - 41px);}
-  #calling-list-view.visible{display:flex;}
+  /* ── QUEUE VIEWS (Calling List, Leads) ────────────── */
+  .queue-view{display:none;flex-direction:column;height:calc(100vh - 56px - 34px - 47px - 41px);}
+  .queue-view.no-banner{height:calc(100vh - 56px - 47px - 41px);}
+  .queue-view.visible{display:flex;}
 
-  #calling-toolbar{
+  .queue-toolbar{
     padding:12px 18px;background:var(--white);border-bottom:1px solid #e4e0d8;
     display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
   }
@@ -136,17 +136,17 @@
   .calling-count{font-size:11.5px;color:var(--mid);}
   .calling-count b{color:var(--navy);font-size:14px;font-family:var(--serif);}
 
-  #calling-table-wrap{flex:1;overflow:auto;background:var(--white);}
-  #calling-table{width:100%;border-collapse:collapse;font-size:12.5px;}
-  #calling-table thead th{
+  .queue-table-wrap{flex:1;overflow:auto;background:var(--white);}
+  .queue-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  .queue-table thead th{
     position:sticky;top:0;background:var(--ivory);text-align:left;padding:10px 14px;
     font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--mid);font-weight:700;
     border-bottom:1px solid #e4e0d8;z-index:1;
   }
-  #calling-table tbody td{padding:10px 14px;border-bottom:1px solid #f0ede5;vertical-align:top;}
-  #calling-table tbody tr{cursor:pointer;transition:background .12s;}
-  #calling-table tbody tr:hover{background:var(--ivory);}
-  #calling-table tbody tr.active{background:#f2ead8;}
+  .queue-table tbody td{padding:10px 14px;border-bottom:1px solid #f0ede5;vertical-align:top;}
+  .queue-table tbody tr{cursor:pointer;transition:background .12s;}
+  .queue-table tbody tr:hover{background:var(--ivory);}
+  .queue-table tbody tr.active{background:#f2ead8;}
   .calling-addr{font-weight:600;color:var(--navy);}
   .calling-sub{font-size:10.5px;color:var(--mid);margin-top:2px;}
   .claim-btn{
@@ -252,14 +252,18 @@
 
   .tag-urgent{background:var(--red);color:var(--white);}
   .tag-flagged{background:var(--red);color:var(--white);}
+  .tag-lead{background:var(--gold);color:var(--navy);}
 
-  .flag-btn{
-    width:100%;margin-top:10px;padding:9px 6px;border-radius:4px;border:1.5px solid #d9d4c8;
+  .marker-buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
+  .flag-btn, .lead-btn{
+    padding:9px 6px;border-radius:4px;border:1.5px solid #d9d4c8;
     background:var(--white);font-size:11px;font-weight:600;cursor:pointer;color:var(--mid);
     text-align:center;letter-spacing:.02em;transition:all .12s;
   }
   .flag-btn:hover{border-color:var(--red);color:var(--red);}
   .flag-btn.active{background:var(--red);border-color:var(--red);color:var(--white);}
+  .lead-btn:hover{border-color:var(--gold);color:var(--gold);}
+  .lead-btn.active{background:var(--gold);border-color:var(--gold);color:var(--navy);}
   .tag-placeholder{background:var(--amber);color:var(--white);}
 
   .placeholder-banner{
@@ -291,6 +295,11 @@
   .contact-value.tagged-yellow{color:var(--dark);opacity:.55;}
   .contact-remove{color:var(--mid);cursor:pointer;font-size:14px;line-height:1;flex-shrink:0;padding:0 2px;}
   .contact-remove:hover{color:var(--red);}
+  .owner-assign-select{
+    font-family:var(--sans);font-size:10px;color:var(--mid);border:1px solid #d9d4c8;border-radius:3px;
+    padding:3px 4px;max-width:92px;background:var(--white);flex-shrink:0;
+  }
+  .owner-assign-select:focus{outline:none;border-color:var(--gold);}
   .contact-add-row{display:flex;gap:6px;margin-top:8px;}
   .contact-add-row input{
     flex:1;font-family:var(--sans);font-size:12px;padding:6px 8px;border:1px solid #d9d4c8;border-radius:3px;
@@ -404,6 +413,7 @@
 <div id="view-tabs">
   <button class="view-tab active" data-view="map" type="button">Map View</button>
   <button class="view-tab" data-view="calling" type="button">Calling List<span class="tab-badge" id="calling-badge">0</span></button>
+  <button class="view-tab" data-view="leads" type="button">Leads<span class="tab-badge" id="leads-badge">0</span></button>
 </div>
 
 <div id="filterbar">
@@ -460,8 +470,8 @@
   <div id="maparea"><div id="map"></div></div>
 </div>
 
-<div id="calling-list-view">
-  <div id="calling-toolbar">
+<div id="calling-list-view" class="queue-view">
+  <div class="queue-toolbar">
     <div class="calling-subfilter">
       <button class="sub-filter-btn active" data-scope="all" type="button">All Ready to Dial</button>
       <button class="sub-filter-btn" data-scope="unclaimed" type="button">Unclaimed</button>
@@ -469,8 +479,8 @@
     </div>
     <div class="calling-count"><b id="calling-count-n">0</b> in queue</div>
   </div>
-  <div id="calling-table-wrap">
-    <table id="calling-table">
+  <div class="queue-table-wrap" id="calling-table-wrap">
+    <table class="queue-table" id="calling-table">
       <thead>
         <tr>
           <th>Claim</th>
@@ -482,6 +492,32 @@
         </tr>
       </thead>
       <tbody id="calling-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="leads-view" class="queue-view">
+  <div class="queue-toolbar">
+    <div class="calling-subfilter">
+      <button class="sub-filter-btn active" data-scope="all" type="button">All Leads</button>
+      <button class="sub-filter-btn" data-scope="unclaimed" type="button">Unclaimed</button>
+      <button class="sub-filter-btn" data-scope="mine" type="button">Mine</button>
+    </div>
+    <div class="calling-count"><b id="leads-count-n">0</b> banked</div>
+  </div>
+  <div class="queue-table-wrap" id="leads-table-wrap">
+    <table class="queue-table" id="leads-table">
+      <thead>
+        <tr>
+          <th>Claim</th>
+          <th>Address</th>
+          <th>Units</th>
+          <th>Owner First Name</th>
+          <th>Phone Numbers</th>
+          <th>Emails</th>
+        </tr>
+      </thead>
+      <tbody id="leads-tbody"></tbody>
     </table>
   </div>
 </div>
@@ -500,6 +536,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
-<script src="app.js?v=13"></script>
+<script src="app.js?v=14"></script>
 </body>
 </html>
