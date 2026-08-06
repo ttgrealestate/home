@@ -249,7 +249,7 @@ function propertyTypeLabel(prop) {
   return "Multifamily";
 }
 function statusLabel(s) {
-  return { not_contacted: "Not Contacted", needs_databasing: "Needs Databasing", ready_to_dial: "Ready to Dial", contacted: "Contacted" }[s] || "Not Contacted";
+  return { not_contacted: "Not Contacted", needs_databasing: "Needs Databasing", ready_to_dial: "Ready to Dial", contacted: "Contacted", skip: "Skip / Not a Fit" }[s] || "Not Contacted";
 }
 function fmtMoney(v) {
   if (!v) return "—";
@@ -354,7 +354,7 @@ function initMap() {
 }
 
 function statusColor(status) {
-  return { not_contacted: "#8a8f98", needs_databasing: "#c98a2c", ready_to_dial: "#3d6fb4", contacted: "#3f8f5f" }[status] || "#8a8f98";
+  return { not_contacted: "#8a8f98", needs_databasing: "#c98a2c", ready_to_dial: "#3d6fb4", contacted: "#3f8f5f", skip: "#9b7fc9" }[status] || "#8a8f98";
 }
 
 // a flag (loan/property info wrong) always shows red, overriding whatever the contact status is
@@ -823,6 +823,7 @@ function drawerBodyHtml(prop, rec) {
       <button class="status-btn${rec.status === "needs_databasing" ? " active" : ""}" data-status="needs_databasing">Needs Databasing</button>
       <button class="status-btn${rec.status === "ready_to_dial" ? " active" : ""}" data-status="ready_to_dial">Ready to Dial</button>
       <button class="status-btn${rec.status === "contacted" ? " active" : ""}" data-status="contacted">Contacted</button>
+      <button class="status-btn status-btn-wide${rec.status === "skip" ? " active" : ""}" data-status="skip">Skip — Institutional / Bad Lead</button>
     </div>
     <div class="marker-buttons">
       <button class="flag-btn${rec.flagged ? " active" : ""}" id="flag-toggle" type="button">

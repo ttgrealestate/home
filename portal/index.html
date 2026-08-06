@@ -19,7 +19,7 @@
     --rule:rgba(184,157,106,0.25);
     --serif:'Cormorant Garamond',Georgia,serif;
     --sans:'Inter',system-ui,sans-serif;
-    --green:#3f8f5f; --amber:#c98a2c; --gray:#8a8f98; --red:#b5482f; --blue:#3d6fb4;
+    --green:#3f8f5f; --amber:#c98a2c; --gray:#8a8f98; --red:#b5482f; --blue:#3d6fb4; --purple:#9b7fc9;
   }
   html,body{height:100%;}
   body{font-family:var(--sans);font-size:13.5px;color:var(--navy);background:var(--ivory);overflow:hidden;}
@@ -180,6 +180,7 @@
   .status-needs_databasing{background:var(--amber);}
   .status-ready_to_dial{background:var(--blue);}
   .status-contacted{background:var(--green);}
+  .status-skip{background:var(--purple);}
   .status-flagged{background:var(--red);}
 
   /* ── DETAIL DRAWER ───────────────────────────────── */
@@ -221,7 +222,9 @@
   .status-btn.active[data-status="contacted"]{background:var(--green);border-color:var(--green);color:var(--white);}
   .status-btn.active[data-status="needs_databasing"]{background:var(--amber);border-color:var(--amber);color:var(--white);}
   .status-btn.active[data-status="ready_to_dial"]{background:var(--blue);border-color:var(--blue);color:var(--white);}
+  .status-btn.active[data-status="skip"]{background:var(--purple);border-color:var(--purple);color:var(--white);}
   .status-btn.active[data-status="not_contacted"]{background:var(--gray);border-color:var(--gray);color:var(--white);}
+  .status-btn-wide{grid-column:1 / -1;}
 
   .notes-list{margin-top:12px;display:flex;flex-direction:column;gap:8px;max-height:220px;overflow-y:auto;}
   .note-item{background:var(--ivory);border-radius:4px;padding:8px 10px;font-size:12px;}
@@ -434,6 +437,7 @@
     <option value="needs_databasing">Needs Databasing</option>
     <option value="ready_to_dial">Ready to Dial</option>
     <option value="contacted">Contacted</option>
+    <option value="skip">Skip / Not a Fit</option>
   </select>
   <select id="f-state">
     <option value="">All States</option>
@@ -537,6 +541,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
-<script src="app.js?v=15"></script>
+<script src="app.js?v=16"></script>
 </body>
 </html>
