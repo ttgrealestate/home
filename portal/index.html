@@ -79,6 +79,33 @@
     display:inline-block;min-width:16px;padding:1px 5px;margin-left:5px;border-radius:8px;
     background:var(--blue);color:#fff;font-size:9.5px;font-weight:700;text-align:center;
   }
+  .view-tabs-spacer{flex:1;}
+  #add-property-btn{
+    align-self:center;font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.03em;
+    color:var(--navy);background:var(--gold);border:none;border-radius:3px;padding:7px 14px;
+    cursor:pointer;text-transform:uppercase;
+  }
+  #add-property-btn:hover{background:var(--gold2);}
+
+  /* ── PIN PLACEMENT ───────────────────────────────── */
+  #pin-placement-hint{
+    display:none;position:absolute;top:16px;left:50%;transform:translateX(-50%);z-index:1200;
+    background:var(--navy);color:var(--white);padding:10px 16px;border-radius:6px;
+    box-shadow:0 6px 20px rgba(0,0,0,.35);align-items:center;gap:14px;font-size:12.5px;
+    border:1px solid var(--gold);white-space:nowrap;
+  }
+  #pin-placement-hint.visible{display:flex;}
+  #pin-placement-hint button{
+    background:var(--gold);color:var(--navy);border:none;border-radius:3px;padding:6px 12px;
+    font-size:11px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:.03em;
+  }
+  #pin-placement-hint button:hover{background:var(--gold2);}
+  .pin-edit-btn{
+    width:100%;margin-bottom:12px;padding:9px 6px;border-radius:4px;border:1.5px dashed var(--gold);
+    background:rgba(184,157,106,.08);font-size:11px;font-weight:600;cursor:pointer;color:var(--gold);
+    text-align:center;letter-spacing:.02em;transition:all .12s;
+  }
+  .pin-edit-btn:hover{background:rgba(184,157,106,.18);}
 
   /* ── FILTER BAR ──────────────────────────────────── */
   #filterbar{
@@ -418,6 +445,8 @@
   <button class="view-tab active" data-view="map" type="button">Map View</button>
   <button class="view-tab" data-view="calling" type="button">Calling List<span class="tab-badge" id="calling-badge">0</span></button>
   <button class="view-tab" data-view="leads" type="button">Leads<span class="tab-badge" id="leads-badge">0</span></button>
+  <div class="view-tabs-spacer"></div>
+  <button id="add-property-btn" type="button">+ Add Property Record</button>
 </div>
 
 <div id="filterbar">
@@ -472,7 +501,13 @@
 
 <div id="main">
   <div id="listpane"></div>
-  <div id="maparea"><div id="map"></div></div>
+  <div id="maparea">
+    <div id="map"></div>
+    <div id="pin-placement-hint">
+      <span id="pin-placement-text">Click anywhere on the map to place the pin.</span>
+      <button id="pin-placement-cancel" type="button">Cancel</button>
+    </div>
+  </div>
 </div>
 
 <div id="calling-list-view" class="queue-view">
@@ -541,6 +576,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
-<script src="app.js?v=16"></script>
+<script src="app.js?v=17"></script>
 </body>
 </html>

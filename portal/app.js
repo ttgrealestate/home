@@ -118,6 +118,7 @@ let markerIndex = {};        // id -> marker
 let currentView = "map";     // "map" | "calling" | "leads"
 let callingScope = "all";    // "all" | "unclaimed" | "mine" — sub-filter within the Calling List view
 let leadsScope = "all";      // "all" | "unclaimed" | "mine" — sub-filter within the Leads view
+let placingPinFor = null;    // property id being repositioned, "new" for a fresh Add Property Record, or null
 
 // ── persistence ──────────────────────────────────────────────
 // CRM state (status/notes/overrides) lives in Firestore, one document per property id, gated
@@ -165,6 +166,39 @@ function loadCRM() {
 function saveCRM(id) {
   db.collection("crm").doc(id).set(CRM[id]).catch((err) => {
     console.error("Failed to save CRM record for", id, err);
+  });
+}
+
+// Properties created from scratch via "Add Property Record" live in their own collection
+// (separate from the read-only chunk snapshots the migration tool writes) so the app itself
+// can write to them. Live onSnapshot keeps every open session in sync, same as CRM data —
+// one associate drops a pin, everyone else sees it appear without a reload.
+function loadManualProperties() {
+  return new Promise((resolve) => {
+    let firstLoad = true;
+    db.collection("manualProperties").onSnapshot((snapshot) => {
+      if (firstLoad) {
+        snapshot.forEach((doc) => PROPERTIES.push(doc.data()));
+        firstLoad = false;
+        resolve();
+        return;
+      }
+      snapshot.docChanges().forEach((change) => {
+        const data = change.doc.data();
+        const idx = PROPERTIES.findIndex(p => p.id === change.doc.id);
+        if (change.type === "removed") {
+          if (idx >= 0) PROPERTIES.splice(idx, 1);
+        } else if (idx >= 0) {
+          PROPERTIES[idx] = data;
+        } else {
+          PROPERTIES.push(data);
+        }
+      });
+      applyFilters();
+    }, (err) => {
+      console.error("manualProperties sync error:", err);
+      if (firstLoad) { firstLoad = false; resolve(); }
+    });
   });
 }
 function getRecord(id) {
@@ -281,7 +315,7 @@ async function loadData() {
       if (snap.exists) PROPERTIES.push(...snap.data().properties);
     });
 
-    await loadCRM();
+    await Promise.all([loadCRM(), loadManualProperties()]);
     populateCountyFilter();
     initMap();
     applyFilters();
@@ -324,6 +358,10 @@ function initMap() {
   window.TTG_MAP = map;
 
   map.on("zoomend", () => restyleMarkers(map.getZoom()));
+  map.on("click", (e) => {
+    if (!placingPinFor) return;
+    handleMapPlacementClick(e.latlng.lat, e.latlng.lng);
+  });
 
   const BasemapToggle = L.Control.extend({
     options: { position: "topright" },
@@ -373,7 +411,9 @@ function dotStyleForZoom(zoom) {
 function buildMarker(prop, style) {
   const rec = getRecord(prop.id);
   const color = markerColor(rec);
-  const marker = L.circleMarker([prop.lat, prop.lon], {
+  const lat = effectiveValue(prop, "lat");
+  const lon = effectiveValue(prop, "lon");
+  const marker = L.circleMarker([lat, lon], {
     radius: style.radius,
     color: "#fff",
     weight: style.weight,
@@ -535,7 +575,9 @@ function renderMarkers() {
   selectedMarker = null;
   const style = dotStyleForZoom(window.TTG_MAP ? window.TTG_MAP.getZoom() : 9);
   filtered.forEach(p => {
-    if (p.lat == null || p.lon == null) return;
+    const lat = effectiveValue(p, "lat");
+    const lon = effectiveValue(p, "lon");
+    if (lat == null || lon == null) return;
     const m = buildMarker(p, style);
     markerIndex[p.id] = m;
     markerLayer.addLayer(m);
@@ -588,6 +630,70 @@ function switchView(view) {
 function refreshActiveQueueView() {
   if (currentView === "calling") renderCallingList();
   if (currentView === "leads") renderLeadsList();
+}
+
+// ── pin placement (move an existing pin, or drop a brand new one) ──────────
+// Both flows work the same way: arm placement mode, switch to the map, and wait for the
+// next click on the map background. Repositioning an existing property goes through the
+// normal lat/lon override (revertable, synced via the CRM doc); a brand new property is
+// created outright in its own Firestore collection since there's no master record to override.
+function startPinPlacement(id) {
+  placingPinFor = id;
+  switchView("map");
+  document.getElementById("pin-placement-text").textContent = id === "new"
+    ? "Click anywhere on the map to place the new property's pin."
+    : "Click anywhere on the map to move this property's pin.";
+  document.getElementById("pin-placement-hint").classList.add("visible");
+  if (window.TTG_MAP) window.TTG_MAP.getContainer().style.cursor = "crosshair";
+}
+
+function cancelPinPlacement() {
+  placingPinFor = null;
+  document.getElementById("pin-placement-hint").classList.remove("visible");
+  if (window.TTG_MAP) window.TTG_MAP.getContainer().style.cursor = "";
+}
+
+function handleMapPlacementClick(lat, lon) {
+  const target = placingPinFor;
+  cancelPinPlacement();
+  if (target === "new") {
+    createManualProperty(lat, lon);
+  } else if (target) {
+    const rec = getRecord(target);
+    rec.overrides.lat = lat;
+    rec.overrides.lon = lon;
+    saveCRM(target);
+    renderMarkers();
+    renderList();
+    renderStats();
+    if (activeId === target) openDrawer(target);
+    refreshActiveQueueView();
+  }
+}
+
+function createManualProperty(lat, lon) {
+  const id = "manual-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  const state = document.getElementById("f-state").value || "CO";
+  const newProp = {
+    id, county: "", state,
+    apn: "", owner: "", adjusted_owner: "", owner_contact: "", first_name: "",
+    phones: [], emails: [],
+    address: "", city: "", zip: "",
+    year_built: "", units: null, units_raw: "",
+    sale_price: "", sale_date: "",
+    mailing_address: "", mailing_city: "", mailing_state: "",
+    monday_uploaded: "",
+    loans: [],
+    is_placeholder: true,
+    is_manual: true,
+    lat, lon
+  };
+  PROPERTIES.push(newProp);
+  db.collection("manualProperties").doc(id).set(newProp).catch((err) => {
+    console.error("Failed to save new property record:", err);
+  });
+  applyFilters();
+  openDrawer(id);
 }
 
 function ownerFirstName(prop) {
@@ -853,6 +959,7 @@ function drawerBodyHtml(prop, rec) {
 
   <div class="d-section">
     <h4>Property</h4>
+    <button class="pin-edit-btn" id="pin-edit-toggle" type="button">&#128205; Edit Pin Location</button>
     ${editableField(prop, "address")}
     ${editableField(prop, "city")}
     ${editableField(prop, "zip")}
@@ -956,6 +1063,8 @@ function wireDrawerEvents(prop) {
     renderList();
     renderStats();
   });
+
+  document.getElementById("pin-edit-toggle").addEventListener("click", () => startPinPlacement(prop.id));
 
   document.getElementById("lead-toggle").addEventListener("click", () => {
     rec.isLead = !rec.isLead;
@@ -1113,6 +1222,15 @@ function initFilterBar() {
   });
   document.querySelectorAll(".preset-btn").forEach(btn => {
     btn.addEventListener("click", () => {
+      // clicking an already-active preset toggles it off and clears the maturity filter,
+      // instead of needing "Clear filters" just to undo this one control
+      if (btn.classList.contains("active")) {
+        document.getElementById("f-maturity-from").value = "";
+        document.getElementById("f-maturity-to").value = "";
+        clearMaturityPresetActive();
+        applyFilters();
+        return;
+      }
       const months = parseInt(btn.dataset.months, 10);
       const from = new Date();
       const to = new Date();
@@ -1150,6 +1268,12 @@ function initFilterBar() {
 
   document.querySelectorAll(".view-tab").forEach(tab => {
     tab.addEventListener("click", () => switchView(tab.dataset.view));
+  });
+
+  document.getElementById("add-property-btn").addEventListener("click", () => startPinPlacement("new"));
+  document.getElementById("pin-placement-cancel").addEventListener("click", cancelPinPlacement);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && placingPinFor) cancelPinPlacement();
   });
 
   // sub-filter buttons (All/Unclaimed/Mine) are scoped per view — Calling List and Leads
