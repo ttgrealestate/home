@@ -118,6 +118,7 @@ let markerIndex = {};        // id -> marker
 let currentView = "map";     // "map" | "calling" | "leads"
 let callingScope = "all";    // "all" | "unclaimed" | "mine" — sub-filter within the Calling List view
 let leadsScope = "all";      // "all" | "unclaimed" | "mine" — sub-filter within the Leads view
+let trackedScope = "all";    // "all" | "unclaimed" | "mine" — sub-filter within the Tracked view
 let placingPinFor = null;    // property id being repositioned, "new" for a fresh Add Property Record, or null
 
 // ── persistence ──────────────────────────────────────────────
@@ -560,6 +561,7 @@ function rowHtml(prop) {
           <span>${escapeHtml(place)}</span>
           ${rec.flagged ? '<span class="tag tag-flagged">Flagged</span>' : ""}
           ${rec.isLead ? '<span class="tag tag-lead">Lead</span>' : ""}
+          ${rec.isTracked ? '<span class="tag tag-tracked">Tracked</span>' : ""}
           ${prop.is_placeholder ? '<span class="tag tag-placeholder">Needs Property Info</span>' : ""}
           ${overridden ? '<span class="tag">Edited</span>' : ""}
           ${loanTagHtml(prop)}
@@ -607,6 +609,9 @@ function renderStats() {
 
   const leadsCount = PROPERTIES.reduce((n, p) => n + (getRecord(p.id).isLead ? 1 : 0), 0);
   document.getElementById("leads-badge").textContent = leadsCount.toLocaleString();
+
+  const trackedCount = PROPERTIES.reduce((n, p) => n + (getRecord(p.id).isTracked ? 1 : 0), 0);
+  document.getElementById("tracked-badge").textContent = trackedCount.toLocaleString();
 }
 
 // ── calling list / leads views ──────────────────────────────────
@@ -620,6 +625,7 @@ function switchView(view) {
   document.getElementById("main").classList.toggle("hidden", view !== "map");
   document.getElementById("calling-list-view").classList.toggle("visible", view === "calling");
   document.getElementById("leads-view").classList.toggle("visible", view === "leads");
+  document.getElementById("tracked-view").classList.toggle("visible", view === "tracked");
   if (view === "map" && window.TTG_MAP) {
     // the map's container was display:none — Leaflet needs a nudge to redraw correctly
     setTimeout(() => window.TTG_MAP.invalidateSize(), 50);
@@ -630,6 +636,20 @@ function switchView(view) {
 function refreshActiveQueueView() {
   if (currentView === "calling") renderCallingList();
   if (currentView === "leads") renderLeadsList();
+  if (currentView === "tracked") renderTrackedList();
+}
+
+// Switches to Map View, opens the property's drawer, and pans/zooms to its marker — used from
+// the Calling List / Leads / Tracked tables where the map isn't currently on screen.
+function viewPropertyOnMap(id) {
+  switchView("map");
+  openDrawer(id);
+  setTimeout(() => {
+    const m = markerIndex[id];
+    if (m && window.TTG_MAP) {
+      window.TTG_MAP.setView(m.getLatLng(), Math.max(window.TTG_MAP.getZoom(), 15));
+    }
+  }, 60); // just after switchView's own invalidateSize timeout so the pan lands correctly
 }
 
 // ── pin placement (move an existing pin, or drop a brand new one) ──────────
@@ -724,6 +744,17 @@ function renderLeadsList() {
   });
 }
 
+function renderTrackedList() {
+  renderQueueTable({
+    wrapId: "tracked-table-wrap",
+    tbodyId: "tracked-tbody",
+    countId: "tracked-count-n",
+    scope: trackedScope,
+    props: filtered.filter(p => getRecord(p.id).isTracked),
+    emptyMessage: `Nothing tracked yet.<br>Mark a property "Track" from its detail panel to keep an eye on it here — no need for it to be a lead.`
+  });
+}
+
 // shared table renderer for the Calling List and Leads views — same columns, same claim
 // mechanism, different membership test (passed in via `props`)
 function renderQueueTable({ wrapId, tbodyId, countId, scope, props, emptyMessage }) {
@@ -755,7 +786,7 @@ function renderQueueTable({ wrapId, tbodyId, countId, scope, props, emptyMessage
   body.innerHTML = scoped.map(callingRowHtml).join("");
   body.querySelectorAll("tr[data-id]").forEach(tr => {
     tr.addEventListener("click", (e) => {
-      if (e.target.closest("[data-claim],[data-release]")) return;
+      if (e.target.closest("[data-claim],[data-release],[data-view-map]")) return;
       openDrawer(tr.dataset.id);
     });
   });
@@ -764,6 +795,9 @@ function renderQueueTable({ wrapId, tbodyId, countId, scope, props, emptyMessage
   });
   body.querySelectorAll("[data-release]").forEach(el => {
     el.addEventListener("click", (e) => { e.stopPropagation(); releaseProperty(el.dataset.release); });
+  });
+  body.querySelectorAll("[data-view-map]").forEach(el => {
+    el.addEventListener("click", (e) => { e.stopPropagation(); viewPropertyOnMap(el.dataset.viewMap); });
   });
 }
 
@@ -787,7 +821,11 @@ function callingRowHtml(prop) {
   return `
   <tr data-id="${escapeHtml(prop.id)}" class="${prop.id === activeId ? "active" : ""}">
     <td>${claimCell}</td>
-    <td><div class="calling-addr">${escapeHtml(addr || "Address unknown")}</div><div class="calling-sub">${escapeHtml(place)}</div></td>
+    <td>
+      <div class="calling-addr">${escapeHtml(addr || "Address unknown")}</div>
+      <div class="calling-sub">${escapeHtml(place)}</div>
+      <button class="view-map-btn" data-view-map="${escapeHtml(prop.id)}" type="button">View on Map</button>
+    </td>
     <td>${prop.units || "—"}</td>
     <td>${escapeHtml(ownerFirstName(prop)) || "—"}</td>
     <td>${escapeHtml(phones)}</td>
@@ -938,7 +976,15 @@ function drawerBodyHtml(prop, rec) {
       <button class="lead-btn${rec.isLead ? " active" : ""}" id="lead-toggle" type="button">
         ${rec.isLead ? "★ Lead — Positive Conversation" : "★ Mark as Lead"}
       </button>
+      <button class="track-btn${rec.isTracked ? " active" : ""}" id="track-toggle" type="button">
+        ${rec.isTracked ? "&#128065; Tracking This Property" : "&#128065; Track This Property"}
+      </button>
     </div>
+    ${rec.claimed_by ? `
+    <div class="claimed-note">
+      <span>Claimed by ${rec.claimed_by === (CURRENT_USER && CURRENT_USER.email) ? "you" : escapeHtml(rec.claimed_by_name || rec.claimed_by)}</span>
+      <span class="release-link" data-release="${escapeHtml(prop.id)}">Release</span>
+    </div>` : ""}
   </div>
 
   <div class="d-section">
@@ -1074,6 +1120,23 @@ function wireDrawerEvents(prop) {
     renderStats();
     refreshActiveQueueView();
   });
+
+  document.getElementById("track-toggle").addEventListener("click", () => {
+    rec.isTracked = !rec.isTracked;
+    saveCRM(prop.id);
+    openDrawer(prop.id);
+    renderList();
+    renderStats();
+    refreshActiveQueueView();
+  });
+
+  const drawerReleaseLink = document.querySelector(".claimed-note [data-release]");
+  if (drawerReleaseLink) {
+    drawerReleaseLink.addEventListener("click", () => {
+      releaseProperty(prop.id);
+      openDrawer(prop.id);
+    });
+  }
 
   document.getElementById("note-save").addEventListener("click", () => {
     const input = document.getElementById("note-input");
@@ -1292,6 +1355,14 @@ function initFilterBar() {
       document.querySelectorAll("#leads-view .sub-filter-btn").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       renderLeadsList();
+    });
+  });
+  document.querySelectorAll("#tracked-view .sub-filter-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      trackedScope = btn.dataset.scope;
+      document.querySelectorAll("#tracked-view .sub-filter-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      renderTrackedList();
     });
   });
 }

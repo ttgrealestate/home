@@ -19,7 +19,7 @@
     --rule:rgba(184,157,106,0.25);
     --serif:'Cormorant Garamond',Georgia,serif;
     --sans:'Inter',system-ui,sans-serif;
-    --green:#3f8f5f; --amber:#c98a2c; --gray:#8a8f98; --red:#b5482f; --blue:#3d6fb4; --purple:#9b7fc9;
+    --green:#3f8f5f; --amber:#c98a2c; --gray:#8a8f98; --red:#b5482f; --blue:#3d6fb4; --purple:#9b7fc9; --teal:#2f9e8f;
   }
   html,body{height:100%;}
   body{font-family:var(--sans);font-size:13.5px;color:var(--navy);background:var(--ivory);overflow:hidden;}
@@ -176,6 +176,12 @@
   .queue-table tbody tr.active{background:#f2ead8;}
   .calling-addr{font-weight:600;color:var(--navy);}
   .calling-sub{font-size:10.5px;color:var(--mid);margin-top:2px;}
+  .view-map-btn{
+    margin-top:4px;font-size:9.5px;font-weight:600;color:var(--gold);background:none;border:none;
+    text-decoration:underline;cursor:pointer;padding:0;text-transform:uppercase;letter-spacing:.03em;
+    display:block;
+  }
+  .view-map-btn:hover{color:var(--gold2);}
   .claim-btn{
     font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:6px 10px;
     border-radius:3px;border:1px solid var(--gold);background:var(--white);color:var(--gold);cursor:pointer;
@@ -284,9 +290,10 @@
   .tag-urgent{background:var(--red);color:var(--white);}
   .tag-flagged{background:var(--red);color:var(--white);}
   .tag-lead{background:var(--gold);color:var(--navy);}
+  .tag-tracked{background:var(--teal);color:var(--white);}
 
   .marker-buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
-  .flag-btn, .lead-btn{
+  .flag-btn, .lead-btn, .track-btn{
     padding:9px 6px;border-radius:4px;border:1.5px solid #d9d4c8;
     background:var(--white);font-size:11px;font-weight:600;cursor:pointer;color:var(--mid);
     text-align:center;letter-spacing:.02em;transition:all .12s;
@@ -295,7 +302,16 @@
   .flag-btn.active{background:var(--red);border-color:var(--red);color:var(--white);}
   .lead-btn:hover{border-color:var(--gold);color:var(--gold);}
   .lead-btn.active{background:var(--gold);border-color:var(--gold);color:var(--navy);}
+  .track-btn{grid-column:1 / -1;}
+  .track-btn:hover{border-color:var(--teal);color:var(--teal);}
+  .track-btn.active{background:var(--teal);border-color:var(--teal);color:var(--white);}
   .tag-placeholder{background:var(--amber);color:var(--white);}
+
+  .claimed-note{
+    display:flex;align-items:center;gap:8px;margin-top:10px;padding:8px 10px;background:var(--ivory);
+    border-radius:4px;font-size:11.5px;color:var(--navy);
+  }
+  .claimed-note .release-link{margin-left:auto;}
 
   .placeholder-banner{
     margin:14px 20px 0;padding:12px 14px;background:rgba(184,157,106,.14);border:1px solid var(--rule);
@@ -445,6 +461,7 @@
   <button class="view-tab active" data-view="map" type="button">Map View</button>
   <button class="view-tab" data-view="calling" type="button">Calling List<span class="tab-badge" id="calling-badge">0</span></button>
   <button class="view-tab" data-view="leads" type="button">Leads<span class="tab-badge" id="leads-badge">0</span></button>
+  <button class="view-tab" data-view="tracked" type="button">Tracked<span class="tab-badge" id="tracked-badge">0</span></button>
   <div class="view-tabs-spacer"></div>
   <button id="add-property-btn" type="button">+ Add Property Record</button>
 </div>
@@ -562,6 +579,32 @@
   </div>
 </div>
 
+<div id="tracked-view" class="queue-view">
+  <div class="queue-toolbar">
+    <div class="calling-subfilter">
+      <button class="sub-filter-btn active" data-scope="all" type="button">All Tracked</button>
+      <button class="sub-filter-btn" data-scope="unclaimed" type="button">Unclaimed</button>
+      <button class="sub-filter-btn" data-scope="mine" type="button">Mine</button>
+    </div>
+    <div class="calling-count"><b id="tracked-count-n">0</b> tracked</div>
+  </div>
+  <div class="queue-table-wrap" id="tracked-table-wrap">
+    <table class="queue-table" id="tracked-table">
+      <thead>
+        <tr>
+          <th>Claim</th>
+          <th>Address</th>
+          <th>Units</th>
+          <th>Owner First Name</th>
+          <th>Phone Numbers</th>
+          <th>Emails</th>
+        </tr>
+      </thead>
+      <tbody id="tracked-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
 <div id="overlay"></div>
 <div id="drawer">
   <div id="drawer-header">
@@ -576,6 +619,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
-<script src="app.js?v=17"></script>
+<script src="app.js?v=18"></script>
 </body>
 </html>
