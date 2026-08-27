@@ -352,11 +352,12 @@ function initMap() {
   const map = L.map("map", { zoomControl: true, preferCanvas: true }).setView([39.6, -104.9], 9);
 
   // CARTO's free basemap tiles now require an API key, so the light "street" layer runs on
-  // OpenFreeMap instead — a genuinely free, no-key, no-rate-limit vector tile service. "Liberty"
-  // is its OSM-carto-based flagship style, closest in warmth/detail to the old CARTO Voyager
-  // look. Served as vector tiles via MapLibre GL, bridged into this Leaflet map as a normal layer.
+  // OpenFreeMap instead — a genuinely free, no-key, no-rate-limit vector tile service. "Positron"
+  // is its grayscale canvas style: parks/forests render as near-invisible light gray instead of
+  // green, keeping the focus on roads, buildings, and labels rather than competing land cover.
+  // Served as vector tiles via MapLibre GL, bridged into this Leaflet map as a normal layer.
   const streetLayer = L.maplibreGL({
-    style: "https://tiles.openfreemap.org/styles/liberty",
+    style: "https://tiles.openfreemap.org/styles/positron",
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://openfreemap.org">OpenFreeMap</a>'
   });
   const satelliteLayer = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
