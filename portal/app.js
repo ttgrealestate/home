@@ -265,11 +265,18 @@ function setContactEntries(prop, field, entries) {
   renderStats();
   refreshActiveQueueView();
 }
+// placeholder records sourced purely from a loan have no assessor-verified unit count of
+// their own — fall back to what the loan data itself reported rather than showing blank
+function effectiveUnits(prop) {
+  if (prop.units) return prop.units;
+  const loans = prop.loans || [];
+  return (loans.length && loans[0].loan_unit_count) || null;
+}
 function propertyType(prop) {
-  const u = prop.units;
+  const u = effectiveUnits(prop);
   if (!u || u <= 1) {
-    // no verified unit count (common for loan-sourced placeholder records) — fall back
-    // to the loan's own category rather than defaulting everything to Single Family
+    // still no unit count anywhere — fall back to the loan's own category rather than
+    // defaulting everything to Single Family
     const loans = prop.loans || [];
     if (loans.length && loans[0].loan_type === "Multifamily") return "mf";
     return "sfr";
@@ -452,7 +459,7 @@ function applyMarkerSelection() {
 function popupHtml(prop) {
   const owner = effectiveValue(prop, "adjusted_owner") || effectiveValue(prop, "owner") || "Unknown Owner";
   const place = prop.county ? prop.county + " Co." : (prop.state || "");
-  return `<b>${escapeHtml(owner)}</b><br>${escapeHtml(fullAddress(prop))}<br><span style="color:#8a8f98">${propertyTypeLabel(prop)} · ${prop.units || "?"} units · ${escapeHtml(place)}</span>`;
+  return `<b>${escapeHtml(owner)}</b><br>${escapeHtml(fullAddress(prop))}<br><span style="color:#8a8f98">${propertyTypeLabel(prop)} · ${effectiveUnits(prop) || "?"} units · ${escapeHtml(place)}</span>`;
 }
 
 function escapeHtml(s) {
@@ -557,7 +564,7 @@ function rowHtml(prop) {
         <div class="prop-sub">${escapeHtml(owner)}</div>
         <div class="prop-meta">
           <span>${propertyTypeLabel(prop)}</span>
-          <span>${prop.units || "?"} units</span>
+          <span>${effectiveUnits(prop) || "?"} units</span>
           <span>${escapeHtml(place)}</span>
           ${rec.flagged ? '<span class="tag tag-flagged">Flagged</span>' : ""}
           ${rec.isLead ? '<span class="tag tag-lead">Lead</span>' : ""}
@@ -826,7 +833,7 @@ function callingRowHtml(prop) {
       <div class="calling-sub">${escapeHtml(place)}</div>
       <button class="view-map-btn" data-view-map="${escapeHtml(prop.id)}" type="button">View on Map</button>
     </td>
-    <td>${prop.units || "—"}</td>
+    <td>${effectiveUnits(prop) || "—"}</td>
     <td>${escapeHtml(ownerFirstName(prop)) || "—"}</td>
     <td>${escapeHtml(phones)}</td>
     <td>${escapeHtml(emails)}</td>
@@ -1041,24 +1048,45 @@ function drawerBodyHtml(prop, rec) {
   `;
 }
 
+const STATE_SHEET_NAMES = { CO: "Colorado", AZ: "Arizona", TX: "Texas" };
+
+function fmtLoanNum(v) {
+  if (v === null || v === undefined || v === "") return "—";
+  return typeof v === "number" ? v.toLocaleString() : v;
+}
+
 function loanSectionHtml(prop) {
   const loans = prop.loans || [];
   if (loans.length === 0) {
-    return `<div class="loan-placeholder">No loan record matched this address in the Colorado loan data.</div>`;
+    return `<div class="loan-placeholder">No loan record matched this address in the loan data.</div>`;
   }
   const current = loans[0];
   const history = loans.slice(1);
+  const sheetName = STATE_SHEET_NAMES[prop.state] || prop.state || "";
+  const interestRate = current.interest_rate
+    ? current.interest_rate + (current.interest_rate_type ? ` (${escapeHtml(current.interest_rate_type)})` : "")
+    : "—";
   return `
-    <div class="loan-caption">Matched by property address from the ${prop.state === "AZ" ? "Arizona" : "Colorado"}&nbsp;-&nbsp;Loans sheet${loans.length > 1 ? ` · ${loans.length} loans on file, most recent shown first` : ""}.</div>
+    <div class="loan-caption">Matched by property address from the ${sheetName}&nbsp;-&nbsp;Loans sheet${loans.length > 1 ? ` · ${loans.length} loans on file, most recent shown first` : ""}.</div>
     <div class="loan-current">
       <div class="loan-row"><span class="k">Loan Category</span><span class="v">${escapeHtml(current.loan_type || "—")}</span></div>
       <div class="loan-row"><span class="k">Lender</span><span class="v">${escapeHtml(current.lender || "—")}</span></div>
       <div class="loan-row"><span class="k">Borrower</span><span class="v">${escapeHtml(current.borrower || "—")}</span></div>
       <div class="loan-row"><span class="k">Loan Amount</span><span class="v">${escapeHtml(current.mortgage_amount || "—")}</span></div>
+      <div class="loan-row"><span class="k">Sale Amount</span><span class="v">${escapeHtml(current.sale_amount || "—")}</span></div>
+      <div class="loan-row"><span class="k">Estimated LTV</span><span class="v">${escapeHtml(current.estimated_ltv || "—")}</span></div>
+      <div class="loan-row"><span class="k">Interest Rate</span><span class="v">${interestRate}</span></div>
+      <div class="loan-row"><span class="k">Term</span><span class="v">${current.term_months ? escapeHtml(current.term_months + " mo") : "—"}</span></div>
       <div class="loan-row"><span class="k">Origination</span><span class="v">${escapeHtml(current.origination_date || "—")}</span></div>
       <div class="loan-row"><span class="k">Maturity</span><span class="v loan-maturity-val">${escapeHtml(current.maturity_date || "—")}</span></div>
+      <div class="loan-row"><span class="k">Estimated Maturity</span><span class="v">${escapeHtml(current.estimated_maturity_date || "—")}</span></div>
+      <div class="loan-row"><span class="k">Due Date</span><span class="v">${escapeHtml(current.due_date || "—")}</span></div>
+      <div class="loan-row"><span class="k">Estimated Due Date</span><span class="v">${escapeHtml(current.estimated_due_date || "—")}</span></div>
       <div class="loan-row"><span class="k">Lender Type</span><span class="v">${escapeHtml(current.lender_type || "—")}</span></div>
       <div class="loan-row"><span class="k">Transaction Type</span><span class="v">${escapeHtml(current.property_type || "—")}</span></div>
+      <div class="loan-row"><span class="k">Year Built (per loan)</span><span class="v">${fmtLoanNum(current.loan_year_built)}</span></div>
+      <div class="loan-row"><span class="k">Units (per loan)</span><span class="v">${fmtLoanNum(current.loan_unit_count)}</span></div>
+      <div class="loan-row"><span class="k">Building Sq Ft</span><span class="v">${fmtLoanNum(current.building_sqft)}</span></div>
     </div>
     ${history.length ? `
     <div class="loan-history">
@@ -1279,7 +1307,7 @@ function initFilterBar() {
     });
   });
   document.getElementById("f-state").addEventListener("change", (e) => {
-    const views = { CO: [[39.6, -104.9], 9], AZ: [[33.6, -111.9], 7] };
+    const views = { CO: [[39.6, -104.9], 9], AZ: [[33.6, -111.9], 7], TX: [[31.4, -99.3], 6] };
     const view = views[e.target.value];
     if (view && window.TTG_MAP) window.TTG_MAP.setView(view[0], view[1]);
   });
