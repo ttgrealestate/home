@@ -351,10 +351,13 @@ function populateCountyFilter() {
 function initMap() {
   const map = L.map("map", { zoomControl: true, preferCanvas: true }).setView([39.6, -104.9], 9);
 
-  const streetLayer = L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    subdomains: "abcd",
-    maxZoom: 20
+  // CARTO's free basemap tiles now require an API key, so the light "street" layer runs on
+  // OpenFreeMap instead — a genuinely free, no-key, no-rate-limit vector tile service. "Liberty"
+  // is its OSM-carto-based flagship style, closest in warmth/detail to the old CARTO Voyager
+  // look. Served as vector tiles via MapLibre GL, bridged into this Leaflet map as a normal layer.
+  const streetLayer = L.maplibreGL({
+    style: "https://tiles.openfreemap.org/styles/liberty",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://openfreemap.org">OpenFreeMap</a>'
   });
   const satelliteLayer = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
     attribution: "Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community",
@@ -1032,6 +1035,11 @@ function drawerBodyHtml(prop, rec) {
   </div>
 
   <div class="d-section">
+    <h4>Associated Properties</h4>
+    ${associatedSectionHtml(prop)}
+  </div>
+
+  <div class="d-section">
     <div class="d-section-head">
       <h4>Contact Info</h4>
       ${contactOverridden ? `<span class="field-revert" data-revert-contact="1">Revert edits</span>` : ""}
@@ -1046,6 +1054,120 @@ function drawerBodyHtml(prop, rec) {
     ${loanSectionHtml(prop)}
   </div>
   `;
+}
+
+// ── associated properties (manual ownership-correlation links) ─────────────
+// Symmetric by design: linking B from A's card also links A from B's card, since the point
+// is showing shared ownership — a one-directional link would leave the other property's
+// card with no sign of the connection at all.
+function associatedSectionHtml(prop) {
+  const rec = getRecord(prop.id);
+  const ids = rec.associated || [];
+  const pills = ids.map(id => associatedPillHtml(id)).join("");
+  return `
+    <div class="assoc-pills">${pills || '<div class="contact-empty">No properties linked yet.</div>'}</div>
+    <div class="assoc-search-wrap">
+      <input type="text" id="assoc-search-input" placeholder="Search address, owner, or APN to link…" autocomplete="off" />
+      <div class="assoc-search-results" id="assoc-search-results"></div>
+    </div>
+  `;
+}
+
+function associatedPillHtml(id) {
+  const p = PROPERTIES.find(pp => pp.id === id);
+  const label = p ? (effectiveValue(p, "address") || "Address unknown") : "(removed)";
+  return `
+  <span class="assoc-pill" data-assoc-open="${escapeHtml(id)}">
+    ${escapeHtml(label)}
+    <span class="assoc-remove" data-assoc-remove="${escapeHtml(id)}" title="Unlink">&times;</span>
+  </span>`;
+}
+
+function wireAssociatedSection(prop) {
+  document.querySelectorAll("[data-assoc-open]").forEach(el => {
+    el.addEventListener("click", (e) => {
+      if (e.target.closest("[data-assoc-remove]")) return;
+      const id = el.dataset.assocOpen;
+      if (PROPERTIES.some(p => p.id === id)) openDrawer(id);
+    });
+  });
+  document.querySelectorAll("[data-assoc-remove]").forEach(el => {
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      removeAssociatedProperty(prop.id, el.dataset.assocRemove);
+    });
+  });
+
+  const input = document.getElementById("assoc-search-input");
+  const results = document.getElementById("assoc-search-results");
+  if (!input) return;
+
+  input.addEventListener("input", () => {
+    const q = input.value.trim().toLowerCase();
+    if (q.length < 3) {
+      results.classList.remove("visible");
+      results.innerHTML = "";
+      return;
+    }
+    const rec = getRecord(prop.id);
+    const already = new Set(rec.associated || []);
+    const matches = PROPERTIES.filter(p => {
+      if (p.id === prop.id || already.has(p.id)) return false;
+      const addr = (effectiveValue(p, "address") || "").toLowerCase();
+      const owner = (effectiveValue(p, "adjusted_owner") || effectiveValue(p, "owner") || "").toLowerCase();
+      const apn = (p.apn || "").toLowerCase();
+      return addr.includes(q) || owner.includes(q) || apn.includes(q);
+    }).slice(0, 8);
+
+    results.innerHTML = matches.length
+      ? matches.map(p => {
+          const addr = effectiveValue(p, "address") || "Address unknown";
+          const owner = effectiveValue(p, "adjusted_owner") || effectiveValue(p, "owner") || "Unknown owner";
+          const place = p.county ? p.county + " Co., " + (p.state || "") : (p.state || "");
+          return `<div class="assoc-result" data-assoc-add="${escapeHtml(p.id)}">
+            <div class="assoc-result-addr">${escapeHtml(addr)}</div>
+            <div class="assoc-result-sub">${escapeHtml(owner)} · ${escapeHtml(place)}</div>
+          </div>`;
+        }).join("")
+      : `<div class="assoc-result-empty">No matching properties.</div>`;
+    results.classList.add("visible");
+  });
+
+  results.addEventListener("mousedown", (e) => {
+    // mousedown (not click) fires before the input's blur, so the result is still in the DOM
+    const el = e.target.closest("[data-assoc-add]");
+    if (!el) return;
+    addAssociatedProperty(prop.id, el.dataset.assocAdd);
+    input.value = "";
+    results.innerHTML = "";
+    results.classList.remove("visible");
+  });
+
+  input.addEventListener("blur", () => {
+    setTimeout(() => results.classList.remove("visible"), 150);
+  });
+}
+
+function addAssociatedProperty(id, otherId) {
+  const rec = getRecord(id);
+  const otherRec = getRecord(otherId);
+  rec.associated = rec.associated || [];
+  otherRec.associated = otherRec.associated || [];
+  if (!rec.associated.includes(otherId)) rec.associated.push(otherId);
+  if (!otherRec.associated.includes(id)) otherRec.associated.push(id);
+  saveCRM(id);
+  saveCRM(otherId);
+  openDrawer(id);
+}
+
+function removeAssociatedProperty(id, otherId) {
+  const rec = getRecord(id);
+  const otherRec = getRecord(otherId);
+  rec.associated = (rec.associated || []).filter(x => x !== otherId);
+  otherRec.associated = (otherRec.associated || []).filter(x => x !== id);
+  saveCRM(id);
+  saveCRM(otherId);
+  openDrawer(id);
 }
 
 const STATE_SHEET_NAMES = { CO: "Colorado", AZ: "Arizona", TX: "Texas" };
@@ -1116,6 +1238,8 @@ function loanTagHtml(prop) {
 
 function wireDrawerEvents(prop) {
   const rec = getRecord(prop.id);
+
+  wireAssociatedSection(prop);
 
   document.querySelectorAll(".status-btn").forEach(btn => {
     btn.addEventListener("click", () => {

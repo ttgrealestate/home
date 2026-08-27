@@ -10,6 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" />
 
 <style>
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -357,6 +358,37 @@
   }
   .contact-add-row button:hover{border-color:var(--gold);color:var(--gold);}
 
+  /* ── ASSOCIATED PROPERTIES ────────────────────────── */
+  .assoc-pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+  .assoc-pill{
+    display:inline-flex;align-items:center;gap:6px;background:var(--ivory);border:1px solid var(--rule);
+    border-radius:14px;padding:5px 8px 5px 12px;font-size:12px;color:var(--navy);font-weight:500;
+    cursor:pointer;transition:background .12s,border-color .12s;
+  }
+  .assoc-pill:hover{background:#f2ead8;border-color:var(--gold);}
+  .assoc-remove{
+    color:var(--mid);cursor:pointer;font-size:14px;line-height:1;width:16px;height:16px;
+    display:flex;align-items:center;justify-content:center;border-radius:50%;flex-shrink:0;
+  }
+  .assoc-remove:hover{color:var(--white);background:var(--red);}
+  .assoc-search-wrap{position:relative;}
+  .assoc-search-wrap input{
+    width:100%;font-family:var(--sans);font-size:12px;padding:7px 9px;border:1px solid #d9d4c8;border-radius:3px;
+  }
+  .assoc-search-wrap input:focus{outline:none;border-color:var(--gold);}
+  .assoc-search-results{
+    display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:20;
+    background:var(--white);border:1px solid var(--rule);border-radius:4px;box-shadow:0 6px 18px rgba(0,0,0,.15);
+    max-height:220px;overflow-y:auto;
+  }
+  .assoc-search-results.visible{display:block;}
+  .assoc-result{padding:8px 10px;cursor:pointer;border-bottom:1px solid #f0ede5;}
+  .assoc-result:last-child{border-bottom:none;}
+  .assoc-result:hover{background:var(--ivory);}
+  .assoc-result-addr{font-size:12.5px;font-weight:600;color:var(--navy);}
+  .assoc-result-sub{font-size:10.5px;color:var(--mid);margin-top:1px;}
+  .assoc-result-empty{padding:10px;font-size:12px;color:var(--mid);text-align:center;}
+
   #overlay{position:fixed;inset:0;background:rgba(13,27,42,.35);z-index:1050;opacity:0;pointer-events:none;transition:opacity .2s;}
   #overlay.open{opacity:1;pointer-events:auto;}
 
@@ -616,9 +648,11 @@
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet/leaflet-maplibre-gl.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
-<script src="app.js?v=19"></script>
+<script src="app.js?v=21"></script>
 </body>
 </html>
