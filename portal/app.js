@@ -471,10 +471,16 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
+function digitsOnly(s) {
+  return (s || "").replace(/\D/g, "");
+}
+
 // ── filtering ────────────────────────────────────────────────
 function currentFilters() {
+  const searchRaw = document.getElementById("f-search").value.trim();
   return {
-    search: document.getElementById("f-search").value.trim().toLowerCase(),
+    search: searchRaw.toLowerCase(),
+    searchDigits: digitsOnly(searchRaw), // lets the same box match phone numbers regardless of formatting
     state: document.getElementById("f-state").value,
     county: document.getElementById("f-county").value,
     type: document.getElementById("f-type").value,
@@ -516,7 +522,12 @@ function matchesFilters(prop, f) {
     const owner = (effectiveValue(prop, "adjusted_owner") || effectiveValue(prop, "owner") || "").toLowerCase();
     const addr = (effectiveValue(prop, "address") || "").toLowerCase();
     const apn = (prop.apn || "").toLowerCase();
-    if (!owner.includes(f.search) && !addr.includes(f.search) && !apn.includes(f.search)) return false;
+    const textMatch = owner.includes(f.search) || addr.includes(f.search) || apn.includes(f.search);
+    // phone numbers are matched on digits only, so "(303) 555-1234", "303-555-1234", and
+    // "3035551234" all find each other regardless of which formatting the query or the record uses
+    const phoneMatch = f.searchDigits.length >= 3 &&
+      getContactEntries(prop, "phones").some(e => digitsOnly(e.value).includes(f.searchDigits));
+    if (!textMatch && !phoneMatch) return false;
   }
   return true;
 }
